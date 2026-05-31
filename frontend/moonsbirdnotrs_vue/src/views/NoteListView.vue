@@ -51,6 +51,14 @@ const goToUpload = () => {
   router.push('/notes/upload')
 }
 
+const goToDetail = (note) => {
+  router.push({ name: 'note-detail', params: { id: note.id } })
+}
+
+const goToEdit = (note) => {
+  router.push({ name: 'note-edit', params: { id: note.id } })
+}
+
 const formatDateTime = (value) => {
   if (!value) {
     return '-'
@@ -67,6 +75,16 @@ const formatDateTime = (value) => {
 const formatWordCount = (value) => `${value || 0} 字`
 
 const handleAction = async (command, note) => {
+  if (command === 'detail') {
+    goToDetail(note)
+    return
+  }
+
+  if (command === 'edit') {
+    goToEdit(note)
+    return
+  }
+
   if (command !== 'delete') {
     return
   }
@@ -145,10 +163,15 @@ onMounted(() => {
           <div v-loading="loading" class="stream-shell">
             <div v-if="notes.length" class="note-stream">
               <article v-for="note in notes" :key="note.id" class="note-row">
-                <div class="note-main">
+                <button class="note-main" type="button" @click="goToDetail(note)">
                   <h3>{{ note.title }}</h3>
+                  <div v-if="note.tags?.length" class="note-tags" aria-label="笔记标签">
+                    <span v-for="tag in note.tags" :key="tag.id || tag.name" class="note-tag">
+                      {{ tag.name }}
+                    </span>
+                  </div>
                   <p class="note-excerpt">{{ note.excerpt }}</p>
-                </div>
+                </button>
 
                 <aside class="note-side">
                   <div class="note-meta">
@@ -174,6 +197,8 @@ onMounted(() => {
 
                     <template #dropdown>
                       <el-dropdown-menu>
+                        <el-dropdown-item command="detail">查看详情</el-dropdown-item>
+                        <el-dropdown-item command="edit">编辑</el-dropdown-item>
                         <el-dropdown-item command="delete">删除</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -322,6 +347,45 @@ onMounted(() => {
   letter-spacing: -0.04em;
 }
 
+.note-main {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-main h3,
+.note-main .note-excerpt {
+  transition: color 0.2s ease;
+}
+
+.note-main:hover h3 {
+  color: var(--brand-blue);
+}
+
+.note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.note-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--brand-blue);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .note-excerpt {
   max-width: 920px;
   margin: 12px 0 0;
@@ -332,10 +396,10 @@ onMounted(() => {
 
 .note-side {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  align-self: end;
+  align-self: center;
 }
 
 .note-meta {
@@ -454,6 +518,11 @@ onMounted(() => {
     align-items: flex-start;
   }
 
+  .notes-actions,
+  .notes-actions :deep(.el-button) {
+    width: 100%;
+  }
+
   .notes-board {
     padding: 22px 22px 18px;
     border-radius: 24px;
@@ -469,6 +538,53 @@ onMounted(() => {
 
   .note-excerpt {
     font-size: 0.94rem;
+  }
+
+  .note-side,
+  .note-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .meta-block {
+    min-width: 0;
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .notes-board {
+    padding: 18px 16px 16px;
+    border-radius: 20px;
+  }
+
+  .note-row {
+    gap: 14px;
+  }
+
+  .note-side {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .note-meta {
+    gap: 10px;
+  }
+
+  .meta-block {
+    padding: 12px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .more-button {
+    align-self: flex-end;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
   }
 }
 </style>

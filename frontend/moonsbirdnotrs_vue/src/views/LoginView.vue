@@ -13,9 +13,29 @@ const form = reactive({
   password: '',
 })
 
+const resolveLoginError = (error) => {
+  const status = error.response?.status
+
+  if (status === 400 || status === 401) return '用户名或密码错误'
+
+  if (!status) {
+    return '无法连接到服务器，请确认后端服务已经启动。'
+  }
+
+  if (status >= 500) {
+    return '服务器处理登录请求时发生错误，请稍后重试。'
+  }
+
+  return '登录失败，请稍后重试。'
+}
+
 const submitLogin = async () => {
   if (!form.username || !form.password) {
-    ElMessage.warning('请输入用户名和密码。')
+    ElMessage({
+      type: 'warning',
+      message: '请输入用户名和密码',
+      duration: 3000,
+    })
     return
   }
 
@@ -34,15 +54,11 @@ const submitLogin = async () => {
     ElMessage.success('登录成功，正在进入系统。')
     router.push('/')
   } catch (error) {
-    // 优先展示后端返回的明确原因，避免用户只看到笼统的失败提示。
-    const detail =
-      error.response?.data?.detail ||
-      error.response?.data?.username?.[0] ||
-      error.response?.data?.password?.[0] ||
-      error.response?.data?.non_field_errors?.[0] ||
-      '登录失败，请稍后重试。'
-
-    ElMessage.error(detail)
+    ElMessage({
+      type: 'error',
+      message: resolveLoginError(error),
+      duration: 3000,
+    })
   } finally {
     loading.value = false
   }
@@ -82,7 +98,7 @@ const submitLogin = async () => {
       <div class="login-panel fade-rise-enter-delay-2">
         <div class="panel-head">
           <h2>进入 MoonBirdNotes</h2>
-          <p class="panel-text">当前仅开放超级管理员访问，请使用系统管理员账号登录。</p>
+          <p class="panel-text">当前仅开放管理员访问，请使用系统管理员账号登录。</p>
         </div>
 
         <el-form class="login-form" label-position="top" @submit.prevent="submitLogin">
@@ -155,6 +171,7 @@ const submitLogin = async () => {
   flex-direction: column;
   justify-content: space-between;
   min-height: 100vh;
+  min-height: 100svh;
   padding: 72px 8vw 56px;
   color: var(--brand-navy);
 }
@@ -309,6 +326,10 @@ const submitLogin = async () => {
 }
 
 @media (max-width: 640px) {
+  .login-page {
+    overflow: visible;
+  }
+
   .login-hero {
     padding: 40px 20px 16px;
   }
@@ -342,6 +363,29 @@ const submitLogin = async () => {
 
   .panel-head h2 {
     font-size: 1.7rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .hero-copy h1 {
+    font-size: 2rem;
+  }
+
+  .point-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .point-index {
+    font-size: 1rem;
+  }
+
+  .login-panel-wrap {
+    padding: 0 14px 20px;
+  }
+
+  .login-panel {
+    padding: 24px 18px 20px;
   }
 }
 </style>

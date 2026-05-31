@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -8,28 +7,38 @@ from rest_framework_simplejwt.tokens import RefreshToken
 class AdminLoginSerializer(TokenObtainPairSerializer):
     username_field = 'username'
 
+    def _raise_login_error(self, detail, error_code):
+        # Keep a stable error code so the frontend can render clear login feedback.
+        raise serializers.ValidationError({
+            'detail': detail,
+            'error_code': error_code,
+        })
+
     def validate(self, attrs):
-        # 先按用户名查找账号，便于返回更明确的登录失败提示。
         username = attrs.get(self.username_field, '').strip()
         password = attrs.get('password')
         user_model = get_user_model()
+
+        if not username:
+            self._raise_login_error('请输入用户名。', 'USERNAME_REQUIRED')
+
+        if not password:
+            self._raise_login_error('请输入密码。', 'PASSWORD_REQUIRED')
+
+        # Check the user first so we can distinguish "not registered" from "wrong password".
         user = user_model.objects.filter(username=username).first()
 
         if not user:
-            raise serializers.ValidationError({'detail': '该用户未注册。'})
+            self._raise_login_error('该用户未注册。', 'USER_NOT_FOUND')
 
         if not user.check_password(password):
-            raise serializers.ValidationError({'detail': '密码错误。'})
-
-        # 当前系统仅允许固定的超级管理员账号登录。
-        if username != settings.ADMIN_USERNAME:
-            raise serializers.ValidationError({'detail': '当前账号未开放登录权限。'})
+            self._raise_login_error('密码错误。', 'PASSWORD_INCORRECT')
 
         if not user.is_superuser:
-            raise serializers.ValidationError({'detail': '当前账号不是超级管理员。'})
+            self._raise_login_error('当前账号没有管理员登录权限。', 'NOT_SUPERUSER')
 
         if not user.is_active:
-            raise serializers.ValidationError({'detail': '当前账号已被禁用。'})
+            self._raise_login_error('当前账号已被禁用。', 'ACCOUNT_DISABLED')
 
         refresh = RefreshToken.for_user(user)
         return {

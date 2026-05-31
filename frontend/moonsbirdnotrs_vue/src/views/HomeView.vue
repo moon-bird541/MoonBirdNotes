@@ -70,6 +70,7 @@ const goToNotes = () => {
 
 .home-stage {
   min-height: calc(100vh - 20px);
+  min-height: calc(100svh - 20px);
   margin-top: 20px;
   padding: 32px;
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -180,6 +181,32 @@ const goToNotes = () => {
 
   .home-grid {
     margin-top: 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-stage {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .home-topbar h1 {
+    font-size: 2rem;
+  }
+
+  .home-intro h2 {
+    font-size: 1.6rem;
+  }
+
+  .status-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 18px 0;
+  }
+
+  .cta-button {
+    width: 100%;
   }
 }
 </style>

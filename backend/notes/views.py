@@ -1,13 +1,27 @@
 from datetime import timedelta
 
+from django.db import transaction
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import Note
-from .serializers import NoteListSerializer, NoteUploadSerializer
+from .models import Note, NoteVersion, Tag
+from .serializers import (
+    NoteDetailSerializer,
+    NoteEditSerializer,
+    NoteListSerializer,
+    NoteUploadSerializer,
+    NoteVersionSerializer,
+    TagSerializer,
+    create_note_version_snapshot,
+    enforce_note_version_limit,
+    note_has_changes,
+    render_markdown_content,
+)
 
 
 def purge_expired_trash_notes():
@@ -31,6 +45,12 @@ class NoteListPagination(PageNumberPagination):
     max_page_size = 50
 
 
+class TagListView(generics.ListAPIView):
+    queryset = Tag.objects.all().order_by('name')
+    serializer_class = TagSerializer
+    permission_classes = [IsAdminUser]
+
+
 class NoteUploadView(generics.CreateAPIView):
     queryset = Note.objects.all()
     serializer_class = NoteUploadSerializer
@@ -46,7 +66,91 @@ class NoteListView(generics.ListAPIView):
     def get_queryset(self):
         purge_expired_trash_notes()
         # 普通笔记列表按创建时间倒序展示，优先看到最新上传的笔记。
-        return Note.objects.filter(is_deleted=False).order_by('-created_at')
+        return Note.objects.filter(is_deleted=False).prefetch_related('tags').order_by('-created_at')
+
+
+class NoteDetailView(generics.RetrieveAPIView):
+    serializer_class = NoteDetailSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        purge_expired_trash_notes()
+        return Note.objects.filter(is_deleted=False).prefetch_related('tags')
+
+
+class NoteEditView(generics.UpdateAPIView):
+    serializer_class = NoteEditSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        purge_expired_trash_notes()
+        return Note.objects.filter(is_deleted=False).prefetch_related('tags')
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        note = serializer.save()
+        payload = NoteDetailSerializer(note, context=self.get_serializer_context()).data
+        payload['no_changes'] = getattr(serializer, 'no_changes', False)
+        return Response(payload)
+
+
+class NoteMarkdownPreviewView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        markdown_content = request.data.get('markdown_content', '')
+        if not isinstance(markdown_content, str):
+            return Response({'detail': 'markdown_content 必须是字符串。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'rendered_html': render_markdown_content(markdown_content)}, status=status.HTTP_200_OK)
+
+
+class NoteVersionListView(generics.ListAPIView):
+    serializer_class = NoteVersionSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        purge_expired_trash_notes()
+        note = get_object_or_404(Note.objects.filter(is_deleted=False), pk=self.kwargs['pk'])
+        return note.versions.all()
+
+
+class NoteVersionRestoreView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk, version_pk):
+        purge_expired_trash_notes()
+        version = get_object_or_404(
+            NoteVersion.objects.select_related('note').filter(note__is_deleted=False, note_id=pk),
+            pk=version_pk,
+        )
+
+        note = get_object_or_404(Note.objects.filter(is_deleted=False).prefetch_related('tags'), pk=version.note_id)
+        if not note_has_changes(note, version.title, version.markdown_content, version.tag_names):
+            payload = NoteDetailSerializer(note, context={'request': request}).data
+            payload['no_changes'] = True
+            return Response(payload, status=status.HTTP_200_OK)
+
+        with transaction.atomic():
+            note = Note.objects.select_for_update().get(pk=version.note_id)
+            create_note_version_snapshot(note)
+
+            note.title = version.title
+            note.markdown_content = version.markdown_content
+            note.rendered_html = version.rendered_html
+            note.save(update_fields=['title', 'markdown_content', 'rendered_html', 'updated_at'])
+
+            tags = [Tag.objects.get_or_create(name=tag_name)[0] for tag_name in version.tag_names]
+            note.tags.set(tags)
+            enforce_note_version_limit(note)
+
+        note = Note.objects.prefetch_related('tags').get(pk=note.pk)
+        payload = NoteDetailSerializer(note, context={'request': request}).data
+        payload['no_changes'] = False
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class TrashNoteListView(generics.ListAPIView):
@@ -57,7 +161,7 @@ class TrashNoteListView(generics.ListAPIView):
     def get_queryset(self):
         purge_expired_trash_notes()
         # 回收站只展示仍在保留期内的软删除笔记。
-        return Note.objects.filter(is_deleted=True).order_by('-updated_at')
+        return Note.objects.filter(is_deleted=True).prefetch_related('tags').order_by('-updated_at')
 
 
 class NoteDeleteView(generics.DestroyAPIView):

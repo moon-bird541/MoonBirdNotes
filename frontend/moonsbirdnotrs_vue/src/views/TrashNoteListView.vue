@@ -526,4 +526,34 @@ onMounted(() => {
     gap: 10px;
   }
 }
+
+@media (max-width: 520px) {
+  .status-panel,
+  .trash-board {
+    padding-inline: 16px;
+    border-radius: 20px;
+  }
+
+  .trash-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .row-mark {
+    display: none;
+  }
+
+  .row-actions {
+    grid-column: auto;
+  }
+
+  .row-actions :deep(.el-button) {
+    width: 100%;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+}
 </style>

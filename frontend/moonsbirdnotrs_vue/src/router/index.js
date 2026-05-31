@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HomeView from '../views/HomeView.vue'
+import NoteDetailView from '../views/NoteDetailView.vue'
+import NoteEditView from '../views/NoteEditView.vue'
 import LoginView from '../views/LoginView.vue'
 import NoteListView from '../views/NoteListView.vue'
 import NoteUploadView from '../views/NoteUploadView.vue'
@@ -23,6 +25,18 @@ const routes = [
     path: '/notes/upload',
     name: 'note-upload',
     component: NoteUploadView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/notes/:id/edit',
+    name: 'note-edit',
+    component: NoteEditView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/notes/:id',
+    name: 'note-detail',
+    component: NoteDetailView,
     meta: { requiresAuth: true },
   },
   {
