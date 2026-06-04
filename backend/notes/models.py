@@ -59,6 +59,7 @@ class NoteVersion(models.Model):
     markdown_content = models.TextField()
     rendered_html = models.TextField()
     tag_names = models.JSONField(default=list)
+    note_text = models.CharField(max_length=500, blank=True, default='')  # 版本备注
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

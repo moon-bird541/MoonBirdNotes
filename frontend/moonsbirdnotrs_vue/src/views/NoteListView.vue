@@ -231,7 +231,7 @@ onMounted(() => {
 
 <style scoped>
 .notes-page {
-  padding: 0 20px 20px 0;
+  padding: 20px;
 }
 
 .notes-stage {
@@ -503,7 +503,7 @@ onMounted(() => {
 
 @media (max-width: 980px) {
   .notes-page {
-    padding: 0 16px 16px;
+    padding: 16px;
   }
 
   .notes-stage {

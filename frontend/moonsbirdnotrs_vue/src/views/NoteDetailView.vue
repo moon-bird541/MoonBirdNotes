@@ -141,7 +141,7 @@ onMounted(() => {
 
 <style scoped>
 .detail-page {
-  padding: 0 20px 20px 0;
+  padding: 20px;
 }
 
 .detail-stage {
@@ -360,7 +360,7 @@ onMounted(() => {
 
 @media (max-width: 980px) {
   .detail-page {
-    padding: 0 16px 16px;
+    padding: 16px;
   }
 
   .detail-stage {

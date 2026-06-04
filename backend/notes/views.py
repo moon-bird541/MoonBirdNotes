@@ -129,6 +129,11 @@ class NoteVersionRestoreView(APIView):
         )
 
         note = get_object_or_404(Note.objects.filter(is_deleted=False).prefetch_related('tags'), pk=version.note_id)
+
+        # 检查是否需要保存当前内容
+        save_current = request.data.get('save_current', False)
+        version_note = request.data.get('version_note', '')
+
         if not note_has_changes(note, version.title, version.markdown_content, version.tag_names):
             payload = NoteDetailSerializer(note, context={'request': request}).data
             payload['no_changes'] = True
@@ -136,7 +141,10 @@ class NoteVersionRestoreView(APIView):
 
         with transaction.atomic():
             note = Note.objects.select_for_update().get(pk=version.note_id)
-            create_note_version_snapshot(note)
+
+            # 如果用户选择保存当前内容，先创建版本
+            if save_current:
+                create_note_version_snapshot(note, version_note)
 
             note.title = version.title
             note.markdown_content = version.markdown_content

@@ -54,13 +54,14 @@ def note_has_changes(note, title, markdown_content, tag_names):
     )
 
 
-def create_note_version_snapshot(note):
+def create_note_version_snapshot(note, note_text=''):
     version = NoteVersion.objects.create(
         note=note,
         title=note.title,
         markdown_content=note.markdown_content,
         rendered_html=note.rendered_html,
         tag_names=get_note_tag_names(note),
+        note_text=note_text,
     )
     enforce_note_version_limit(note)
     return version
@@ -297,6 +298,8 @@ class NoteEditSerializer(serializers.Serializer):
         child=serializers.CharField(max_length=50),
         required=True,
     )
+    create_version = serializers.BooleanField(default=True)
+    version_note = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
     def validate_title(self, value):
         title = value.strip()
@@ -308,6 +311,9 @@ class NoteEditSerializer(serializers.Serializer):
         return normalize_tag_names(value)
 
     def update(self, instance, validated_data):
+        create_version = validated_data.pop('create_version', True)
+        version_note = validated_data.pop('version_note', '')
+
         self.no_changes = not note_has_changes(
             instance,
             validated_data['title'],
@@ -315,18 +321,25 @@ class NoteEditSerializer(serializers.Serializer):
             validated_data['tag_names'],
         )
 
-        if self.no_changes:
+        # 自动保存时，如果无变化则直接返回，避免无意义的数据库写入
+        # 手动创建版本时，即使无变化也要创建版本快照（用户想要里程碑）
+        if self.no_changes and not create_version:
             return instance
 
-        create_note_version_snapshot(instance)
+        # 手动创建版本时才生成快照
+        if create_version:
+            create_note_version_snapshot(instance, version_note)
 
-        instance.title = validated_data['title']
-        instance.markdown_content = validated_data['markdown_content']
-        instance.rendered_html = render_markdown_content(validated_data['markdown_content'])
-        instance.save(update_fields=['title', 'markdown_content', 'rendered_html', 'updated_at'])
+        # 只有真正有变化时才更新数据库
+        if not self.no_changes:
+            instance.title = validated_data['title']
+            instance.markdown_content = validated_data['markdown_content']
+            instance.rendered_html = render_markdown_content(validated_data['markdown_content'])
+            instance.save(update_fields=['title', 'markdown_content', 'rendered_html', 'updated_at'])
 
-        tags = [Tag.objects.get_or_create(name=tag_name)[0] for tag_name in validated_data['tag_names']]
-        instance.tags.set(tags)
+            tags = [Tag.objects.get_or_create(name=tag_name)[0] for tag_name in validated_data['tag_names']]
+            instance.tags.set(tags)
+
         return instance
 
     def create(self, validated_data):
@@ -342,8 +355,10 @@ class NoteVersionSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'markdown_content',
+            'rendered_html',
             'word_count',
             'tag_names',
+            'note_text',
             'created_at',
         ]
 

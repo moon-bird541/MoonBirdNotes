@@ -104,21 +104,22 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .workspace-shell {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 24px;
+  position: relative;
   min-height: 100vh;
   min-height: 100svh;
-  transition: grid-template-columns 0.24s ease;
+  padding-left: 248px;
+  transition: padding-left 0.24s ease;
 }
 
 .workspace-shell.sidebar-collapsed {
-  grid-template-columns: 98px minmax(0, 1fr);
+  padding-left: 98px;
 }
 
 .workspace-sidebar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: 248px;
   min-height: 100vh;
   min-height: 100svh;
   padding: 22px 18px;
@@ -127,6 +128,12 @@ onBeforeUnmount(() => {
     linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.52)),
     rgba(255, 255, 255, 0.52);
   backdrop-filter: blur(18px);
+  transition: width 0.24s ease;
+  z-index: 100;
+}
+
+.workspace-sidebar.is-collapsed {
+  width: 98px;
 }
 
 .sidebar-stack {
@@ -274,37 +281,52 @@ onBeforeUnmount(() => {
 
 .workspace-content {
   min-width: 0;
+  padding: 0 24px 0 0;
 }
 
 @media (max-width: 1400px) {
   .workspace-shell {
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 18px;
+    padding-left: 220px;
   }
 
   .workspace-shell.sidebar-collapsed {
-    grid-template-columns: 88px minmax(0, 1fr);
+    padding-left: 88px;
   }
 
   .workspace-sidebar {
+    width: 220px;
     padding-inline: 14px;
+  }
+
+  .workspace-sidebar.is-collapsed {
+    width: 88px;
+  }
+
+  .workspace-content {
+    padding-right: 18px;
   }
 }
 
 @media (max-width: 980px) {
   .workspace-shell,
   .workspace-shell.sidebar-collapsed {
-    grid-template-columns: 1fr;
+    padding-left: 0;
+    padding-top: 0;
   }
 
   .workspace-sidebar {
     position: static;
+    width: 100%;
     min-height: auto;
     padding: 18px 16px 0;
     border-right: none;
     border-bottom: 1px solid rgba(148, 163, 184, 0.16);
     background: transparent;
     backdrop-filter: none;
+  }
+
+  .workspace-sidebar.is-collapsed {
+    width: 100%;
   }
 
   .sidebar-stack {

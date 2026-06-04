@@ -65,7 +65,7 @@ const goToNotes = () => {
 
 <style scoped>
 .home-page {
-  padding: 0 20px 20px 0;
+  padding: 20px;
 }
 
 .home-stage {
@@ -163,7 +163,7 @@ const goToNotes = () => {
 
 @media (max-width: 980px) {
   .home-page {
-    padding: 0 16px 16px;
+    padding: 16px;
   }
 
   .home-stage {

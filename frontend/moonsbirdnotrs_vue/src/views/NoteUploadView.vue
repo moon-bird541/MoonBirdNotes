@@ -270,7 +270,7 @@ onMounted(() => {
 
 <style scoped>
 .upload-page {
-  padding: 0 20px 20px 0;
+  padding: 20px;
 }
 
 .upload-stage {
@@ -656,7 +656,7 @@ onMounted(() => {
 
 @media (max-width: 980px) {
   .upload-page {
-    padding: 0 16px 16px;
+    padding: 16px;
   }
 
   .upload-stage {
