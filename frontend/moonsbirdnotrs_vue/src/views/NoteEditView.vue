@@ -1,7 +1,7 @@
 ﻿<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Back, Check, Clock, Document, Minus, RefreshRight, Tickets } from '@element-plus/icons-vue'
+import { Back, Check, Clock, Close, Document, Minus, Plus, RefreshRight, Tickets } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Editor from '@toast-ui/editor'
 import { wrapIn } from 'prosemirror-commands'
@@ -24,6 +24,10 @@ const editorReady = ref(false)
 const tagOptions = ref([])
 const versions = ref([])
 const versionsLoading = ref(false)
+const versionDrawerVisible = ref(false)
+const tagInputVisible = ref(false)
+const tagInputValue = ref('')
+const tagInput = ref(null)
 const editorRoot = ref(null)
 const floatingToolbar = ref(null)
 const selectionRange = ref(null)
@@ -1235,13 +1239,56 @@ const fetchPageData = async () => {
 const handleTagChange = (value) => {
   const normalized = [...new Set(value.map((item) => item.trim()).filter(Boolean))]
 
-  if (normalized.length > 2) {
-    ElMessage.warning('每篇笔记最多只能选择两个标签。')
-    form.tag_names = normalized.slice(0, 2)
+  if (normalized.length > 4) {
+    ElMessage.warning('每篇笔记最多只能选择四个标签。')
+    form.tag_names = normalized.slice(0, 4)
     return
   }
 
   form.tag_names = normalized
+}
+
+// 移除标签
+const handleTagRemove = (tag) => {
+  form.tag_names = form.tag_names.filter(t => t !== tag)
+}
+
+// 显示标签输入框
+const showTagInput = () => {
+  if (form.tag_names.length >= 4) {
+    ElMessage.warning('每篇笔记最多只能选择四个标签。')
+    return
+  }
+  tagInputVisible.value = true
+  nextTick(() => {
+    tagInput.value?.focus()
+  })
+}
+
+// 取消标签输入
+const cancelTagInput = () => {
+  tagInputVisible.value = false
+  tagInputValue.value = ''
+}
+
+// 确认添加标签
+const handleTagInputConfirm = () => {
+  const value = tagInputValue.value.trim()
+  if (value) {
+    if (form.tag_names.includes(value)) {
+      ElMessage.warning('该标签已存在。')
+    } else if (form.tag_names.length >= 4) {
+      ElMessage.warning('每篇笔记最多只能选择四个标签。')
+    } else {
+      form.tag_names.push(value)
+      // 如果是新标签，添加到选项列表
+      if (!tagOptions.value.includes(value)) {
+        tagOptions.value.push(value)
+      }
+    }
+  }
+  tagInputVisible.value = false
+  tagInputValue.value = ''
 }
 
 const saveNote = async () => {
@@ -1395,6 +1442,16 @@ const previewVersion = (version) => {
 const closeVersionPreview = () => {
   versionPreview.visible = false
   versionPreview.version = null
+}
+
+// 切换版本抽屉
+const toggleVersionDrawer = () => {
+  versionDrawerVisible.value = !versionDrawerVisible.value
+}
+
+// 关闭版本抽屉
+const closeVersionDrawer = () => {
+  versionDrawerVisible.value = false
 }
 
 // 恢复版本
@@ -1569,36 +1626,67 @@ onBeforeUnmount(() => {
 
         <section class="editor-layout fade-rise-enter-delay">
           <article class="editor-main">
-            <div class="field-block">
-              <label>标题</label>
-              <el-input v-model="form.title" size="large" maxlength="255" show-word-limit />
-            </div>
-
-            <div class="field-block">
-              <label>标签</label>
-              <el-select
-                v-model="form.tag_names"
-                class="tag-select"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                :reserve-keyword="false"
-                collapse-tags
-                collapse-tags-tooltip
-                placeholder="选择已有标签，或输入新标签后回车"
-                @change="handleTagChange"
-              >
-                <el-option v-for="tagName in tagOptions" :key="tagName" :label="tagName" :value="tagName" />
-              </el-select>
-            </div>
-
             <section class="editor-panel">
-              <div class="editor-head">
-                <div>
-                  <p>Editor</p>
-                  <h2>正文编辑</h2>
+              <div class="editor-meta">
+                <input
+                  v-model="form.title"
+                  class="title-input"
+                  type="text"
+                  placeholder="无标题"
+                  maxlength="255"
+                />
+                <div class="title-count">{{ form.title.length }}/255</div>
+              </div>
+
+              <div class="editor-meta tags-section">
+                <div class="tags-list">
+                  <div
+                    v-for="tag in form.tag_names"
+                    :key="tag"
+                    class="tag-pill"
+                  >
+                    <span class="tag-icon">#</span>
+                    <span class="tag-text">{{ tag }}</span>
+                    <button
+                      type="button"
+                      class="tag-remove"
+                      @click="handleTagRemove(tag)"
+                      aria-label="移除标签"
+                    >
+                      <el-icon><Close /></el-icon>
+                    </button>
+                  </div>
+
+                  <div v-if="tagInputVisible" class="tag-input-wrapper">
+                    <span class="tag-icon">#</span>
+                    <input
+                      ref="tagInput"
+                      v-model="tagInputValue"
+                      class="tag-input-field"
+                      type="text"
+                      placeholder="输入标签名"
+                      maxlength="20"
+                      @keyup.enter="handleTagInputConfirm"
+                      @blur="handleTagInputConfirm"
+                      @keyup.esc="cancelTagInput"
+                    />
+                  </div>
+
+                  <button
+                    v-else
+                    type="button"
+                    class="tag-add-btn"
+                    @click="showTagInput"
+                  >
+                    <el-icon><Plus /></el-icon>
+                    <span>添加标签</span>
+                  </button>
                 </div>
+              </div>
+
+              <div class="editor-divider"></div>
+
+              <div class="editor-stats">
                 <span>{{ wordCount }} 字</span>
               </div>
 
@@ -1763,41 +1851,60 @@ onBeforeUnmount(() => {
               {{ hoverBlockHint.label }}
             </div>
           </Teleport>
+        </section>
 
-          <aside class="version-panel">
-            <div class="version-head">
+        <!-- 版本抽屉遮罩 -->
+        <transition name="drawer-mask">
+          <div v-show="versionDrawerVisible" class="drawer-mask" @click="closeVersionDrawer"></div>
+        </transition>
+
+        <!-- 版本抽屉 -->
+        <transition name="drawer-slide">
+          <aside v-show="versionDrawerVisible" class="version-drawer">
+            <div class="version-drawer-header">
               <div>
                 <p>Versions</p>
                 <h2>历史版本</h2>
               </div>
-              <span>{{ versionCountText }}</span>
+              <button class="drawer-close-btn" @click="closeVersionDrawer">
+                <el-icon><Close /></el-icon>
+              </button>
             </div>
 
-            <div v-if="versions.length" class="version-list">
-              <article
-                v-for="version in versions"
-                :key="version.id"
-                class="version-item"
-                @click="previewVersion(version)"
-              >
-                <div class="version-icon">
-                  <el-icon><Clock /></el-icon>
-                </div>
-                <div class="version-copy">
-                  <strong>{{ version.title }}</strong>
-                  <span>{{ formatDateTime(version.created_at) }} / {{ version.word_count }} 字</span>
-                  <p v-if="version.note_text" class="version-note">{{ version.note_text }}</p>
-                  <p v-if="version.tag_names?.length">{{ version.tag_names.join(' / ') }}</p>
-                </div>
-              </article>
-            </div>
+            <div class="version-drawer-body">
+              <div v-if="versions.length" class="version-list">
+                <article
+                  v-for="version in versions"
+                  :key="version.id"
+                  class="version-item"
+                  @click="previewVersion(version)"
+                >
+                  <div class="version-icon">
+                    <el-icon><Clock /></el-icon>
+                  </div>
+                  <div class="version-copy">
+                    <strong>{{ version.title }}</strong>
+                    <span>{{ formatDateTime(version.created_at) }} / {{ version.word_count }} 字</span>
+                    <p v-if="version.note_text" class="version-note">{{ version.note_text }}</p>
+                    <p v-if="version.tag_names?.length">{{ version.tag_names.join(' / ') }}</p>
+                  </div>
+                </article>
+              </div>
 
-            <div v-else class="version-empty">
-              <p>还没有历史版本。</p>
-              <span>点击"创建版本"后，当前内容会进入版本记录。</span>
+              <div v-else class="version-empty">
+                <p>还没有历史版本。</p>
+                <span>点击"创建版本"后，当前内容会进入版本记录。</span>
+              </div>
             </div>
           </aside>
-        </section>
+        </transition>
+
+        <!-- 浮动版本按钮 -->
+        <button class="floating-version-button" @click="toggleVersionDrawer">
+          <el-icon><Document /></el-icon>
+          <span class="button-label">版本</span>
+          <span v-if="versions.length" class="version-count">{{ versions.length }}</span>
+        </button>
 
         <transition name="preview-float">
           <aside v-show="floatingPreviewVisible" class="floating-preview">
@@ -1929,7 +2036,7 @@ onBeforeUnmount(() => {
 
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: 1fr;
   gap: 26px;
   align-items: start;
   margin-top: 34px;
@@ -1952,61 +2059,196 @@ onBeforeUnmount(() => {
   padding: 30px;
 }
 
-.field-block {
-  display: grid;
-  gap: 10px;
-}
-
-.field-block label {
-  color: var(--brand-navy);
-  font-weight: 700;
-}
-
-.field-block :deep(.el-input__wrapper),
-.field-block :deep(.el-select__wrapper) {
-  border-radius: 16px;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.18) inset;
-}
-
-.tag-select {
-  width: 100%;
-}
-
 .editor-panel {
   display: grid;
-  gap: 18px;
-  padding: 24px;
+  gap: 0;
+  padding: 30px 32px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.76);
 }
 
-.editor-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+.editor-meta {
+  position: relative;
+  margin-bottom: 16px;
 }
 
-.editor-head p {
-  margin: 0 0 8px;
-  color: var(--brand-blue);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.editor-head h2 {
-  margin: 0;
+.title-input {
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  background: transparent;
   color: var(--brand-navy);
-  font-size: 1.5rem;
-  letter-spacing: -0.04em;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  outline: none;
+  transition: color 0.2s ease;
 }
 
-.editor-head > span {
+.title-input::placeholder {
+  color: rgba(100, 116, 139, 0.3);
+}
+
+.title-input:focus {
+  color: var(--brand-blue);
+}
+
+.title-count {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.title-input:focus + .title-count {
+  opacity: 1;
+}
+
+/* 标签区域 */
+.tags-section {
+  margin-bottom: 16px;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(245, 158, 11, 0.06));
+  color: var(--brand-blue);
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.tag-pill:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(245, 158, 11, 0.08));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.tag-icon {
+  color: var(--brand-blue);
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.tag-text {
+  color: var(--brand-navy);
+}
+
+.tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  transform: scale(1.1);
+}
+
+.tag-remove :deep(.el-icon) {
+  font-size: 12px;
+}
+
+.tag-input-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--brand-blue);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.tag-input-field {
+  width: 120px;
+  border: none;
+  background: transparent;
+  color: var(--brand-navy);
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.tag-input-field::placeholder {
+  color: rgba(100, 116, 139, 0.5);
+}
+
+.tag-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.5);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag-add-btn:hover {
+  border-color: var(--brand-blue);
+  border-style: solid;
+  background: rgba(37, 99, 235, 0.06);
+  color: var(--brand-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.tag-add-btn :deep(.el-icon) {
+  font-size: 14px;
+}
+
+.editor-divider {
+  height: 1px;
+  margin: 24px 0 16px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(148, 163, 184, 0.2) 20%,
+    rgba(148, 163, 184, 0.2) 80%,
+    transparent
+  );
+}
+
+.editor-stats {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.editor-stats span {
   color: var(--ink-soft);
   font-size: 0.9rem;
   font-weight: 600;
@@ -2589,15 +2831,22 @@ onBeforeUnmount(() => {
     margin-left: auto;
   }
 
-  .editor-main,
-  .version-panel {
+  .editor-main {
     padding: 22px;
-    border-radius: 24px;
   }
 
   .editor-panel {
-    padding: 20px;
+    padding: 24px 20px;
     border-radius: 20px;
+  }
+
+  .title-input {
+    font-size: 1.8rem;
+    padding: 10px 0;
+  }
+
+  .editor-divider {
+    margin: 20px 0 14px;
   }
 
   .floating-toolbar {
@@ -2667,6 +2916,25 @@ onBeforeUnmount(() => {
     padding: 14px;
     border-radius: 18px;
   }
+
+  .version-drawer {
+    width: 100vw;
+  }
+
+  .floating-version-button {
+    right: 16px;
+    bottom: 16px;
+    min-width: 64px;
+    padding: 12px 10px;
+  }
+
+  .floating-version-button :deep(.el-icon) {
+    font-size: 22px;
+  }
+
+  .floating-version-button .button-label {
+    font-size: 0.8rem;
+  }
 }
 
 /* 版本预览对话框样式 */
@@ -2719,5 +2987,167 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.5);
+}
+
+/* 版本抽屉遮罩 */
+.drawer-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.drawer-mask-enter-active,
+.drawer-mask-leave-active {
+  transition: all 0.3s ease;
+}
+
+.drawer-mask-enter-from,
+.drawer-mask-leave-to {
+  opacity: 0;
+}
+
+/* 版本抽屉 */
+.version-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101;
+  width: min(420px, 85vw);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.96));
+  backdrop-filter: blur(20px);
+  box-shadow: -8px 0 48px rgba(15, 23, 42, 0.15);
+}
+
+.drawer-slide-enter-active,
+.drawer-slide-leave-active {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawer-slide-enter-from,
+.drawer-slide-leave-to {
+  transform: translateX(100%);
+}
+
+.version-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 26px 22px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), transparent);
+}
+
+.version-drawer-header p {
+  margin: 0 0 8px;
+  color: var(--brand-blue);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.version-drawer-header h2 {
+  margin: 0;
+  color: var(--brand-navy);
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.drawer-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--brand-navy);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-close-btn:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.05);
+}
+
+.version-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 26px 30px;
+}
+
+/* 浮动版本按钮 */
+.floating-version-button {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 72px;
+  padding: 14px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.12),
+    0 4px 12px rgba(37, 99, 235, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(12px);
+}
+
+.floating-version-button:hover {
+  transform: translateY(-3px);
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.18),
+    0 8px 20px rgba(37, 99, 235, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.floating-version-button :deep(.el-icon) {
+  font-size: 26px;
+}
+
+.floating-version-button .button-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.floating-version-button .version-count {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
 </style>

@@ -31,8 +31,8 @@ def normalize_tag_names(tag_names):
     if not normalized:
         raise serializers.ValidationError('请至少填写一个标签。')
 
-    if len(normalized) > 2:
-        raise serializers.ValidationError('每篇笔记最多只能选择两个标签。')
+    if len(normalized) > 4:
+        raise serializers.ValidationError('每篇笔记最多只能选择四个标签。')
 
     return normalized
 
@@ -77,7 +77,7 @@ class NoteUploadSerializer(serializers.ModelSerializer):
     # 前端通过 file 字段上传原始 .md 文件。
     file = serializers.FileField(write_only=True)
     file_url = serializers.SerializerMethodField()
-    # 标签必填，当前规则为每篇笔记最多两个标签。
+    # 标签必填，当前规则为每篇笔记最多四个标签。
     tag_names = serializers.ListField(
         child=serializers.CharField(max_length=50),
         write_only=True,
