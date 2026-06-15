@@ -19,17 +19,17 @@ class Note(models.Model):
     # 笔记标题：优先取 Markdown 一级标题，没有时回退到文件名。
     title = models.CharField(max_length=255)
 
-    # 原始上传文件名：保留用户本地文件名，便于识别来源。
-    source_filename = models.CharField(max_length=255)
+    # 原始上传文件名：保留用户本地文件名，便于识别来源。空白笔记时为空。
+    source_filename = models.CharField(max_length=255, blank=True, default='')
 
-    # 原始 Markdown 文件：保存到 media/notes/日期目录下。
-    markdown_file = models.FileField(upload_to='notes/%Y/%m/%d/')
+    # 原始 Markdown 文件：保存到 media/notes/日期目录下。空白笔记时为空。
+    markdown_file = models.FileField(upload_to='notes/%Y/%m/%d/', blank=True, null=True)
 
-    # Markdown 原文内容：后续可用于编辑、搜索和重新渲染。
-    markdown_content = models.TextField()
+    # Markdown 原文内容：后续可用于编辑、搜索和重新渲染。空白笔记时为空字符串。
+    markdown_content = models.TextField(blank=True, default='')
 
     # 渲染后的 HTML 内容：后续展示时可以直接返回使用。
-    rendered_html = models.TextField()
+    rendered_html = models.TextField(blank=True, default='')
 
     # 标签：当前约束为每篇笔记最多两个标签，校验放在序列化器层处理。
     tags = models.ManyToManyField(Tag, related_name='notes', blank=True)

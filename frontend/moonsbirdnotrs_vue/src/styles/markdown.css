@@ -116,6 +116,7 @@
 }
 
 .markdown-body pre {
+  position: relative;
   overflow-x: auto;
   padding: 18px 20px;
   border: 1px solid rgba(15, 23, 42, 0.16);
@@ -124,6 +125,27 @@
   color: #e2e8f0;
   line-height: 1.75;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.markdown-body pre .code-language-label {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  min-width: 74px;
+  max-width: min(132px, calc(100% - 28px));
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  color: var(--brand-navy);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 30px;
+  text-align: center;
+  letter-spacing: 0.01em;
+  pointer-events: none;
 }
 
 .markdown-body code {

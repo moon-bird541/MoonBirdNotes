@@ -1,7 +1,18 @@
 ﻿<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Back, Check, Clock, Close, Document, Minus, Plus, RefreshRight, Tickets } from '@element-plus/icons-vue'
+import {
+  Back,
+  Check,
+  Clock,
+  Close,
+  Document,
+  MagicStick,
+  Minus,
+  Plus,
+  RefreshRight,
+  Tickets,
+} from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Editor from '@toast-ui/editor'
 import { wrapIn } from 'prosemirror-commands'
@@ -1062,6 +1073,171 @@ const applyCodeBlock = () => {
   })
 }
 
+const normalizeCodeIndent = (code) => {
+  const normalizedLines = code.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').split('\n')
+  const firstContentIndex = normalizedLines.findIndex((line) => line.trim())
+  const lastContentIndex = normalizedLines.findLastIndex((line) => line.trim())
+
+  if (firstContentIndex === -1 || lastContentIndex === -1) {
+    return ''
+  }
+
+  const contentLines = normalizedLines.slice(firstContentIndex, lastContentIndex + 1)
+  const minIndent = contentLines
+    .filter((line) => line.trim())
+    .reduce((min, line) => {
+      const indent = line.match(/^\s*/)?.[0].length || 0
+      return Math.min(min, indent)
+    }, Number.POSITIVE_INFINITY)
+
+  return contentLines.map((line) => line.slice(Number.isFinite(minIndent) ? minIndent : 0)).join('\n')
+}
+
+const formatJsonCode = (code) => {
+  try {
+    return JSON.stringify(JSON.parse(code), null, 2)
+  } catch {
+    return null
+  }
+}
+
+const getIndentDelta = (line) => {
+  let delta = 0
+  let quote = ''
+  let escaped = false
+
+  for (const char of line) {
+    if (escaped) {
+      escaped = false
+      continue
+    }
+
+    if (char === '\\') {
+      escaped = true
+      continue
+    }
+
+    if (quote) {
+      if (char === quote) {
+        quote = ''
+      }
+      continue
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char
+      continue
+    }
+
+    if (char === '{' || char === '[' || char === '(') {
+      delta += 1
+    } else if (char === '}' || char === ']' || char === ')') {
+      delta -= 1
+    }
+  }
+
+  return delta
+}
+
+const formatBracketIndentedCode = (code) => {
+  let indentLevel = 0
+  const indentUnit = '  '
+
+  return code
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim()
+
+      if (!trimmed) {
+        return ''
+      }
+
+      const startsWithClosingToken = /^[}\])]/.test(trimmed)
+      const effectiveIndentLevel = startsWithClosingToken ? Math.max(indentLevel - 1, 0) : indentLevel
+
+      const formattedLine = `${indentUnit.repeat(effectiveIndentLevel)}${trimmed}`
+      const delta = getIndentDelta(trimmed)
+
+      if (startsWithClosingToken) {
+        indentLevel = effectiveIndentLevel
+      }
+
+      if (delta > 0) {
+        indentLevel += delta
+      } else if (delta < 0 && !startsWithClosingToken) {
+        indentLevel = Math.max(indentLevel + delta, 0)
+      }
+
+      return formattedLine
+    })
+    .join('\n')
+}
+
+const formatCodeBlockContent = (code, language = '') => {
+  const normalizedCode = normalizeCodeIndent(code)
+  const normalizedLanguage = language.toLowerCase()
+  const jsonCode = formatJsonCode(normalizedCode)
+
+  if (jsonCode && (!normalizedLanguage || normalizedLanguage === 'json')) {
+    return jsonCode
+  }
+
+  return formatBracketIndentedCode(normalizedCode)
+}
+
+const getSelectedCodeBlockInfo = (view) => {
+  const selection = view?.state?.selection
+  if (!view || !selection || selection.empty) {
+    return null
+  }
+
+  for (let depth = selection.$from.depth; depth >= 0; depth -= 1) {
+    const node = selection.$from.node(depth)
+    if (node?.type?.name === 'codeBlock') {
+      const pos = depth === 0 ? 0 : selection.$from.before(depth)
+      return { node, pos }
+    }
+  }
+
+  return null
+}
+
+const applyCodeBlockAutoFormat = () => {
+  if (!editorInstance || !toolbarState.codeBlock.full) {
+    return
+  }
+
+  restoreSelection()
+
+  const view = getWysiwygView()
+  const codeBlockInfo = getSelectedCodeBlockInfo(view)
+  if (!view || !codeBlockInfo) {
+    return
+  }
+
+  const { node, pos } = codeBlockInfo
+  const formattedCode = formatCodeBlockContent(node.textContent || '', node.attrs?.language || '')
+
+  if (formattedCode === node.textContent) {
+    updateToolbarState()
+    return
+  }
+
+  const contentStart = pos + 1
+  const contentEnd = contentStart + node.content.size
+  const tr = view.state.tr.insertText(formattedCode, contentStart, contentEnd)
+  const selectionEnd = contentStart + formattedCode.length
+
+  tr.setSelection(TextSelection.create(tr.doc, contentStart, selectionEnd)).scrollIntoView()
+  view.dispatch(tr)
+  updatePreviewFromEditor()
+  updateToolbarState()
+
+  nextTick(() => {
+    scheduleToolbarSync()
+  })
+}
+
 const applyHorizontalRule = () => {
   if (!editorInstance) {
     return
@@ -1432,6 +1608,48 @@ const stopAutoSave = () => {
   }
 }
 
+// 手动保存（Ctrl+S）
+const handleManualSave = async () => {
+  if (!editorInstance) return
+
+  const currentContent = editorInstance.getMarkdown()
+
+  // 内容无变化，跳过
+  if (currentContent === lastSavedContent) {
+    ElMessage.info('内容未修改，无需保存')
+    return
+  }
+
+  try {
+    // 手动保存不生成版本
+    await api.put(`/notes/${route.params.id}/edit/`, {
+      title: form.title,
+      tag_names: form.tag_names,
+      markdown_content: currentContent,
+      create_version: false,
+    })
+
+    lastSavedContent = currentContent
+    ElMessage.success('保存成功')
+  } catch (error) {
+    const detail =
+      error.response?.data?.title?.[0] ||
+      error.response?.data?.tag_names?.[0] ||
+      error.response?.data?.detail ||
+      '保存失败，请稍后重试。'
+    ElMessage.error(detail)
+  }
+}
+
+// 处理键盘快捷键
+const handleKeyboardShortcut = (event) => {
+  // Ctrl+S 或 Cmd+S 保存
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault()
+    handleManualSave()
+  }
+}
+
 // 查看版本预览
 const previewVersion = (version) => {
   versionPreview.visible = true
@@ -1576,6 +1794,9 @@ onMounted(async () => {
   // 启动自动保存
   startAutoSave()
 
+  // 添加键盘快捷键监听
+  document.addEventListener('keydown', handleKeyboardShortcut)
+
   document.addEventListener('selectionchange', handleDocumentSelection)
   window.addEventListener('resize', hideToolbar)
   window.addEventListener('scroll', scheduleToolbarSync, true)
@@ -1585,6 +1806,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   // 清理定时器
   stopAutoSave()
+
+  // 移除键盘快捷键监听
+  document.removeEventListener('keydown', handleKeyboardShortcut)
 
   document.removeEventListener('selectionchange', handleDocumentSelection)
   window.removeEventListener('resize', hideToolbar)
@@ -1819,6 +2043,21 @@ onBeforeUnmount(() => {
                     @click="applyCodeBlock"
                   >
                     <el-icon><Document /></el-icon>
+                  </button>
+                </el-tooltip>
+                <el-tooltip
+                  v-if="toolbarState.codeBlock.full"
+                  content="AI 自动排版代码块"
+                  placement="top"
+                  :show-after="120"
+                >
+                  <button
+                    type="button"
+                    class="toolbar-button with-icon ai-format-button"
+                    @mousedown.prevent
+                    @click="applyCodeBlockAutoFormat"
+                  >
+                    <el-icon><MagicStick /></el-icon>
                   </button>
                 </el-tooltip>
                 <el-tooltip content="分割线" placement="top" :show-after="120">
@@ -2342,6 +2581,11 @@ onBeforeUnmount(() => {
 .wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block) {
   position: relative;
   margin: 18px 0 14px;
+  border-radius: 20px;
+}
+
+.wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block pre) {
+  border-radius: 20px;
 }
 
 .wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block:after) {
@@ -2410,7 +2654,7 @@ onBeforeUnmount(() => {
 
 .floating-toolbar {
   position: fixed;
-  z-index: 60;
+  z-index: 200;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2430,7 +2674,7 @@ onBeforeUnmount(() => {
 
 .hover-block-hint {
   position: fixed;
-  z-index: 55;
+  z-index: 199;
   min-height: 26px;
   padding: 0 10px;
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -2667,7 +2911,7 @@ onBeforeUnmount(() => {
   position: fixed;
   right: 28px;
   bottom: 28px;
-  z-index: 50;
+  z-index: 198;
   display: grid;
   gap: 12px;
   width: min(380px, calc(100vw - 32px));
@@ -3094,7 +3338,7 @@ onBeforeUnmount(() => {
   position: fixed;
   right: 28px;
   bottom: 28px;
-  z-index: 50;
+  z-index: 198;
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { MoreFilled } from '@element-plus/icons-vue'
+import { Close, Delete, EditPen, MoreFilled, Search, View } from '@element-plus/icons-vue'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
@@ -13,6 +13,8 @@ const notes = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const searchKeyword = ref('')
+const activeSearchKeyword = ref('')
 
 const totalPages = computed(() => {
   if (!total.value) {
@@ -26,10 +28,15 @@ const fetchNotes = async (page = 1) => {
   loading.value = true
 
   try {
+    const params = { page }
+    const keyword = activeSearchKeyword.value.trim()
+
+    if (keyword) {
+      params.search = keyword
+    }
+
     const { data } = await api.get('/notes/', {
-      params: {
-        page,
-      },
+      params,
     })
 
     notes.value = data.results
@@ -40,6 +47,23 @@ const fetchNotes = async (page = 1) => {
     ElMessage.error(detail)
   } finally {
     loading.value = false
+  }
+}
+
+const handleSearch = () => {
+  activeSearchKeyword.value = searchKeyword.value.trim()
+  searchKeyword.value = activeSearchKeyword.value
+  fetchNotes(1)
+}
+
+const clearSearch = () => {
+  const hadSearch = Boolean(activeSearchKeyword.value)
+
+  searchKeyword.value = ''
+  activeSearchKeyword.value = ''
+
+  if (hadSearch) {
+    fetchNotes(1)
   }
 }
 
@@ -95,12 +119,21 @@ const handleAction = async (command, note) => {
 const handleDelete = async (note) => {
   try {
     await ElMessageBox.confirm(
-      `确定要将《${note.title}》移入回收站吗？`,
-      '删除确认',
+      `确定要将《${note.title}》移入回收站吗？笔记会在回收站保留 30 天，在此期间可以随时恢复。`,
+      '移入回收站',
       {
         confirmButtonText: '确认删除',
         cancelButtonText: '取消',
         type: 'warning',
+        customClass: 'beautiful-confirm-box',
+        confirmButtonClass: 'beautiful-confirm-button',
+        cancelButtonClass: 'beautiful-cancel-button',
+        closeOnClickModal: false,
+        closeOnPressEscape: true,
+        showClose: true,
+        center: false,
+        draggable: false,
+        lockScroll: true,
       }
     )
   } catch {
@@ -160,6 +193,33 @@ onMounted(() => {
             </div>
           </div>
 
+          <form class="search-panel" @submit.prevent="handleSearch">
+            <el-input
+              v-model="searchKeyword"
+              class="search-input"
+              clearable
+              placeholder="搜索标题、正文、标签或文件名"
+              @clear="clearSearch"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+
+            <el-button class="search-button" type="primary" native-type="submit" :loading="loading">
+              搜索
+            </el-button>
+
+            <el-button
+              v-if="activeSearchKeyword"
+              class="clear-search-button"
+              :icon="Close"
+              @click="clearSearch"
+            >
+              清空
+            </el-button>
+          </form>
+
           <div v-loading="loading" class="stream-shell">
             <div v-if="notes.length" class="note-stream">
               <article v-for="note in notes" :key="note.id" class="note-row">
@@ -190,16 +250,26 @@ onMounted(() => {
                     trigger="click"
                     placement="bottom-end"
                     @command="(command) => handleAction(command, note)"
+                    popper-class="beautiful-dropdown"
                   >
                     <button class="more-button" type="button" aria-label="更多操作">
                       <el-icon><MoreFilled /></el-icon>
                     </button>
 
                     <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="detail">查看详情</el-dropdown-item>
-                        <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                        <el-dropdown-item command="delete">删除</el-dropdown-item>
+                      <el-dropdown-menu class="custom-dropdown-menu">
+                        <el-dropdown-item command="detail" class="dropdown-item-with-icon">
+                          <el-icon><View /></el-icon>
+                          <span>查看详情</span>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="edit" class="dropdown-item-with-icon">
+                          <el-icon><EditPen /></el-icon>
+                          <span>编辑</span>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="delete" class="dropdown-item-with-icon dropdown-item-danger">
+                          <el-icon><Delete /></el-icon>
+                          <span>删除</span>
+                        </el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -208,8 +278,22 @@ onMounted(() => {
             </div>
 
             <div v-else class="empty-state">
-              <p>当前还没有笔记，先上传一篇 Markdown 笔记吧。</p>
-              <el-button class="empty-action" type="primary" @click="goToUpload">去上传</el-button>
+              <p>
+                {{
+                  activeSearchKeyword
+                    ? `没有找到与“${activeSearchKeyword}”相关的笔记。`
+                    : '当前还没有笔记，先上传一篇 Markdown 笔记吧。'
+                }}
+              </p>
+              <el-button
+                v-if="activeSearchKeyword"
+                class="empty-action"
+                type="primary"
+                @click="clearSearch"
+              >
+                清空搜索
+              </el-button>
+              <el-button v-else class="empty-action" type="primary" @click="goToUpload">去上传</el-button>
             </div>
           </div>
 
@@ -314,6 +398,49 @@ onMounted(() => {
   gap: 14px;
   flex-wrap: wrap;
   color: var(--ink-soft);
+}
+
+.search-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 22px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.search-input :deep(.el-input__wrapper) {
+  min-height: 46px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+.search-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.26);
+}
+
+.search-button,
+.clear-search-button {
+  min-height: 46px;
+  border-radius: 14px;
+}
+
+.search-button {
+  border: none;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 58%, #f59e0b 170%);
+}
+
+.clear-search-button {
+  border-color: rgba(148, 163, 184, 0.24);
+  color: var(--brand-navy);
+}
+
+.search-panel :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .stream-shell {
@@ -528,6 +655,15 @@ onMounted(() => {
     border-radius: 24px;
   }
 
+  .search-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .search-button,
+  .clear-search-button {
+    width: 100%;
+  }
+
   .note-row {
     padding: 20px 0;
   }
@@ -586,5 +722,150 @@ onMounted(() => {
   .pagination-wrap {
     justify-content: center;
   }
+}
+</style>
+
+<style>
+/* 美化下拉菜单样式 - 必须是非 scoped 样式才能作用于 popper */
+.beautiful-dropdown {
+  border-radius: 18px !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  padding: 8px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  overflow-x: hidden !important;
+}
+
+.beautiful-dropdown .el-dropdown-menu,
+.beautiful-dropdown .custom-dropdown-menu {
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+.beautiful-dropdown .el-dropdown-menu__item {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  padding: 12px 16px !important;
+  border-radius: 12px !important;
+  margin: 4px 0 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: #0f172a !important;
+  font-weight: 500 !important;
+}
+
+.beautiful-dropdown .dropdown-item-with-icon {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.beautiful-dropdown .dropdown-item-with-icon .el-icon {
+  font-size: 16px !important;
+  color: #2563eb !important;
+  transition: all 0.2s ease !important;
+}
+
+.beautiful-dropdown .el-dropdown-menu__item:hover {
+  background: rgba(37, 99, 235, 0.08) !important;
+  color: #2563eb !important;
+}
+
+.beautiful-dropdown .dropdown-item-danger {
+  color: #dc2626 !important;
+}
+
+.beautiful-dropdown .dropdown-item-danger .el-icon {
+  color: #dc2626 !important;
+}
+
+.beautiful-dropdown .dropdown-item-danger:hover {
+  background: rgba(220, 38, 38, 0.08) !important;
+  color: #b91c1c !important;
+}
+
+.beautiful-dropdown .dropdown-item-danger:hover .el-icon {
+  color: #b91c1c !important;
+}
+
+/* 美化确认对话框样式 */
+.beautiful-confirm-box {
+  border-radius: 24px !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  padding: 32px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(24px) !important;
+}
+
+.beautiful-confirm-box .el-message-box__header {
+  padding: 0 0 20px 0 !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.beautiful-confirm-box .el-message-box__title {
+  color: #0f172a !important;
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.beautiful-confirm-box .el-message-box__content {
+  padding: 24px 0 !important;
+  color: #64748b !important;
+  font-size: 1rem !important;
+  line-height: 1.8 !important;
+}
+
+.beautiful-confirm-box .el-message-box__btns {
+  display: flex !important;
+  gap: 12px !important;
+  padding: 20px 0 0 0 !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+.beautiful-confirm-button {
+  min-height: 44px !important;
+  padding: 0 24px !important;
+  border: none !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.24) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.beautiful-confirm-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 32px rgba(220, 38, 38, 0.32) !important;
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%) !important;
+}
+
+.beautiful-cancel-button {
+  min-height: 44px !important;
+  padding: 0 24px !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.beautiful-cancel-button:hover {
+  transform: translateY(-1px) !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+  background: rgba(255, 255, 255, 1) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1) !important;
+}
+
+.beautiful-confirm-box .el-message-box__status {
+  font-size: 28px !important;
+  margin-right: 12px !important;
+}
+
+.beautiful-confirm-box .el-message-box__status.el-icon {
+  color: #f59e0b !important;
 }
 </style>

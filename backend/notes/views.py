@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
@@ -11,6 +12,7 @@ from rest_framework.views import APIView
 
 from .models import Note, NoteVersion, Tag
 from .serializers import (
+    NoteCreateSerializer,
     NoteDetailSerializer,
     NoteEditSerializer,
     NoteListSerializer,
@@ -58,6 +60,13 @@ class NoteUploadView(generics.CreateAPIView):
     permission_classes = [IsAdminUser]
 
 
+class NoteCreateView(generics.CreateAPIView):
+    queryset = Note.objects.all()
+    serializer_class = NoteCreateSerializer
+    # 当前系统只允许管理员本人使用，因此创建接口仅开放给管理员。
+    permission_classes = [IsAdminUser]
+
+
 class NoteListView(generics.ListAPIView):
     serializer_class = NoteListSerializer
     permission_classes = [IsAdminUser]
@@ -66,7 +75,18 @@ class NoteListView(generics.ListAPIView):
     def get_queryset(self):
         purge_expired_trash_notes()
         # 普通笔记列表按创建时间倒序展示，优先看到最新上传的笔记。
-        return Note.objects.filter(is_deleted=False).prefetch_related('tags').order_by('-created_at')
+        queryset = Note.objects.filter(is_deleted=False).prefetch_related('tags')
+        search = self.request.query_params.get('search', '').strip()
+
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search)
+                | Q(markdown_content__icontains=search)
+                | Q(source_filename__icontains=search)
+                | Q(tags__name__icontains=search)
+            ).distinct()
+
+        return queryset.order_by('-created_at')
 
 
 class NoteDetailView(generics.RetrieveAPIView):

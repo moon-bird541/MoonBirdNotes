@@ -1,10 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
+import api from '../services/api'
 
 const router = useRouter()
+const creating = ref(false)
 
 const currentUser = computed(() => {
   const raw = localStorage.getItem('current_user')
@@ -13,6 +16,31 @@ const currentUser = computed(() => {
 
 const goToNotes = () => {
   router.push('/notes')
+}
+
+const createNewNote = async () => {
+  creating.value = true
+
+  try {
+    const { data } = await api.post('/notes/create/', {
+      title: '未命名笔记',
+      markdown_content: '',
+      tag_names: ['未分类'],
+    })
+
+    ElMessage.success('笔记创建成功，正在跳转...')
+    // 跳转到编辑页面
+    router.push({ name: 'note-edit', params: { id: data.id } })
+  } catch (error) {
+    const detail =
+      error.response?.data?.title?.[0] ||
+      error.response?.data?.tag_names?.[0] ||
+      error.response?.data?.detail ||
+      '创建笔记失败，请稍后重试。'
+    ElMessage.error(detail)
+  } finally {
+    creating.value = false
+  }
 }
 </script>
 
@@ -37,7 +65,10 @@ const goToNotes = () => {
             </p>
 
             <div class="home-cta">
-              <el-button class="cta-button" type="primary" size="large" @click="goToNotes">
+              <el-button class="cta-button" type="primary" size="large" @click="createNewNote" :loading="creating">
+                创建笔记
+              </el-button>
+              <el-button class="cta-button-secondary" size="large" @click="goToNotes">
                 查看笔记列表
               </el-button>
             </div>
@@ -128,6 +159,9 @@ const goToNotes = () => {
 }
 
 .home-cta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
   margin-top: 28px;
 }
 
@@ -138,6 +172,26 @@ const goToNotes = () => {
   border-radius: 16px;
   background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 46%, #f59e0b 160%);
   box-shadow: 0 18px 36px rgba(37, 99, 235, 0.24);
+}
+
+.cta-button-secondary {
+  min-height: 50px;
+  padding-inline: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--brand-navy);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.cta-button-secondary:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
 }
 
 .home-status {
@@ -206,6 +260,10 @@ const goToNotes = () => {
   }
 
   .cta-button {
+    width: 100%;
+  }
+
+  .cta-button-secondary {
     width: 100%;
   }
 }

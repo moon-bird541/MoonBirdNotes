@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftBold, ArrowRightBold, Delete, Document, House } from '@element-plus/icons-vue'
+import { ArrowLeftBold, ArrowRightBold, Delete, Document, House, SwitchButton } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -58,13 +58,19 @@ onBeforeUnmount(() => {
   <div class="workspace-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <aside class="workspace-sidebar" :class="{ 'is-collapsed': sidebarCollapsed && !isMobile }">
       <div class="sidebar-stack">
-        <div class="sidebar-top">
+        <div class="sidebar-top" :class="{ 'is-collapsed': sidebarCollapsed && !isMobile }">
           <div class="sidebar-brand" :class="{ 'is-collapsed': sidebarCollapsed && !isMobile }">
             <p v-if="!sidebarCollapsed || isMobile" class="sidebar-kicker">MoonBirdNotes</p>
             <h2>{{ sidebarCollapsed && !isMobile ? 'MB' : '控制台' }}</h2>
           </div>
 
-          <button class="collapse-button" type="button" @click="toggleSidebar">
+          <button
+            class="collapse-button"
+            :class="{ 'is-collapsed': sidebarCollapsed && !isMobile }"
+            type="button"
+            :aria-label="sidebarCollapsed ? '展开功能栏' : '收起功能栏'"
+            @click="toggleSidebar"
+          >
             <el-icon v-if="sidebarCollapsed"><ArrowRightBold /></el-icon>
             <el-icon v-else><ArrowLeftBold /></el-icon>
           </button>
@@ -88,10 +94,16 @@ onBeforeUnmount(() => {
 
         <div class="sidebar-footer" :class="{ 'is-collapsed': sidebarCollapsed && !isMobile }">
           <p v-if="!sidebarCollapsed || isMobile">{{ currentUser?.username || '管理员' }}</p>
-          <el-button plain @click="logout">
-            <span v-if="sidebarCollapsed && !isMobile">退出</span>
-            <span v-else>退出登录</span>
-          </el-button>
+          <button
+            class="logout-button"
+            :class="{ 'is-collapsed': sidebarCollapsed && !isMobile }"
+            type="button"
+            :title="sidebarCollapsed && !isMobile ? '退出登录' : undefined"
+            @click="logout"
+          >
+            <el-icon class="logout-icon"><SwitchButton /></el-icon>
+            <span v-if="!sidebarCollapsed || isMobile">退出登录</span>
+          </button>
         </div>
       </div>
     </aside>
@@ -119,6 +131,7 @@ onBeforeUnmount(() => {
   position: fixed;
   top: 0;
   left: 0;
+  box-sizing: border-box;
   width: 248px;
   min-height: 100vh;
   min-height: 100svh;
@@ -128,7 +141,10 @@ onBeforeUnmount(() => {
     linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.52)),
     rgba(255, 255, 255, 0.52);
   backdrop-filter: blur(18px);
-  transition: width 0.24s ease;
+  overflow-x: hidden;
+  transition:
+    width 0.24s ease,
+    padding 0.24s ease;
   z-index: 100;
 }
 
@@ -150,6 +166,12 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+.sidebar-top.is-collapsed {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
 .sidebar-brand {
   min-width: 0;
 }
@@ -158,6 +180,19 @@ onBeforeUnmount(() => {
   display: grid;
   justify-items: center;
   width: 100%;
+}
+
+.sidebar-brand.is-collapsed h2 {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(245, 158, 11, 0.1));
+  color: var(--brand-blue);
+  font-size: 1.12rem;
+  letter-spacing: -0.04em;
 }
 
 .sidebar-kicker {
@@ -199,6 +234,15 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
+.collapse-button.is-collapsed {
+  width: 42px;
+  height: 42px;
+  border-color: rgba(37, 99, 235, 0.16);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--brand-blue);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
 .sidebar-nav {
   display: grid;
   gap: 10px;
@@ -208,6 +252,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   min-height: 50px;
   padding: 14px 16px;
   border: 1px solid transparent;
@@ -277,6 +322,55 @@ onBeforeUnmount(() => {
 .sidebar-footer p {
   margin: 0;
   color: var(--ink-soft);
+}
+
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.78)),
+    rgba(255, 255, 255, 0.86);
+  color: var(--brand-navy);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.logout-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(239, 68, 68, 0.22);
+  background:
+    linear-gradient(135deg, rgba(254, 242, 242, 0.96), rgba(255, 255, 255, 0.86)),
+    rgba(255, 255, 255, 0.92);
+  color: #dc2626;
+  box-shadow: 0 16px 28px rgba(220, 38, 38, 0.1);
+}
+
+.logout-button.is-collapsed {
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0;
+  border-radius: 18px;
+}
+
+.logout-icon {
+  font-size: 1rem;
+  flex: 0 0 auto;
 }
 
 .workspace-content {
@@ -388,7 +482,7 @@ onBeforeUnmount(() => {
     justify-items: stretch;
   }
 
-  .sidebar-footer :deep(.el-button) {
+  .logout-button {
     width: 100%;
   }
 }

@@ -1,8 +1,11 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Back, DocumentCopy, EditPen, Reading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import Viewer from '@toast-ui/editor/viewer'
+
+import '@toast-ui/editor/dist/toastui-editor-viewer.css'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
@@ -12,6 +15,9 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const note = ref(null)
+const articleViewer = ref(null)
+
+let viewerInstance = null
 
 const tagNames = computed(() => note.value?.tags?.map((tag) => tag.name) || [])
 
@@ -21,6 +27,8 @@ const fetchNote = async () => {
   try {
     const { data } = await api.get(`/notes/${route.params.id}/`)
     note.value = data
+    await nextTick()
+    renderViewerContent()
   } catch (error) {
     const detail = error.response?.data?.detail || '获取笔记详情失败，请稍后重试。'
     ElMessage.error(detail)
@@ -53,8 +61,32 @@ const formatDateTime = (value) => {
 
 const formatWordCount = (value) => `${value || 0} 字`
 
-onMounted(() => {
-  fetchNote()
+const renderViewerContent = () => {
+  if (!articleViewer.value) {
+    return
+  }
+
+  const markdownContent = note.value?.markdown_content || ''
+
+  if (!viewerInstance) {
+    viewerInstance = new Viewer({
+      el: articleViewer.value,
+      initialValue: markdownContent,
+      usageStatistics: false,
+    })
+    return
+  }
+
+  viewerInstance.setMarkdown(markdownContent)
+}
+
+onMounted(async () => {
+  await fetchNote()
+})
+
+onBeforeUnmount(() => {
+  viewerInstance?.destroy()
+  viewerInstance = null
 })
 </script>
 
@@ -97,7 +129,7 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="article-content markdown-body" v-html="note.rendered_html"></div>
+              <div ref="articleViewer" class="article-content detail-viewer"></div>
             </article>
 
             <aside class="reader-meta">
@@ -279,11 +311,66 @@ onMounted(() => {
   margin-top: 28px;
 }
 
+.detail-viewer :deep(.toastui-editor-contents) {
+  color: var(--brand-navy);
+  font-size: 1rem;
+  line-height: 1.95;
+  font-family: inherit;
+}
+
+.detail-viewer :deep(.toastui-editor-contents pre),
+.detail-viewer :deep(.toastui-editor-contents code),
+.detail-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block),
+.detail-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block code) {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+.detail-viewer :deep(.toastui-editor-contents p),
+.detail-viewer :deep(.toastui-editor-contents li),
+.detail-viewer :deep(.toastui-editor-contents blockquote) {
+  color: var(--brand-navy);
+}
+
+.detail-viewer :deep(.toastui-editor-contents h1),
+.detail-viewer :deep(.toastui-editor-contents h2),
+.detail-viewer :deep(.toastui-editor-contents h3),
+.detail-viewer :deep(.toastui-editor-contents h4),
+.detail-viewer :deep(.toastui-editor-contents h5),
+.detail-viewer :deep(.toastui-editor-contents h6) {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detail-viewer :deep(.toastui-editor-contents em),
+.detail-viewer :deep(.toastui-editor-contents i) {
+  display: inline-block;
+  font-style: oblique 12deg;
+  transform: skewX(-8deg);
+  transform-origin: center bottom;
+}
+
+.detail-viewer :deep(.toastui-editor-contents blockquote) {
+  border-left-color: var(--brand-blue);
+}
+
+.detail-viewer :deep(.toastui-editor-contents pre) {
+  margin: 18px 0 14px;
+  border-radius: 20px;
+}
+
+.detail-viewer :deep(.toastui-editor-contents :not(pre) > code) {
+  padding: 0.16em 0.5em;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--brand-blue);
+}
+
 .reader-meta {
   position: sticky;
   top: 22px;
   display: grid;
   gap: 14px;
+  align-self: start;
 }
 
 .meta-block,
@@ -353,7 +440,6 @@ onMounted(() => {
   }
 
   .reader-meta {
-    position: static;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

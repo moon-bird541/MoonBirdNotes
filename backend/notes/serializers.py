@@ -346,6 +346,77 @@ class NoteEditSerializer(serializers.Serializer):
         raise NotImplementedError
 
 
+class NoteCreateSerializer(serializers.ModelSerializer):
+    tag_names = serializers.ListField(
+        child=serializers.CharField(max_length=50),
+        write_only=True,
+        required=True,
+    )
+    tags = TagSerializer(many=True, read_only=True)
+    file_url = serializers.SerializerMethodField()
+    markdown_content = serializers.CharField(allow_blank=True, default='')
+
+    class Meta:
+        model = Note
+        fields = [
+            'id',
+            'title',
+            'source_filename',
+            'file_url',
+            'tag_names',
+            'tags',
+            'markdown_content',
+            'rendered_html',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'source_filename',
+            'file_url',
+            'tags',
+            'rendered_html',
+            'created_at',
+            'updated_at',
+        ]
+
+    def validate_title(self, value):
+        title = value.strip()
+        if not title:
+            raise serializers.ValidationError('请填写笔记标题。')
+        return title
+
+    def validate_tag_names(self, value):
+        return normalize_tag_names(value)
+
+    def create(self, validated_data):
+        tag_names = validated_data.pop('tag_names')
+        title = validated_data.get('title', '未命名笔记')
+        markdown_content = validated_data.get('markdown_content', '')
+
+        # 渲染 Markdown 为 HTML
+        rendered_html = render_markdown_content(markdown_content)
+
+        note = Note.objects.create(
+            title=title,
+            source_filename='',  # 空白笔记没有原始文件
+            markdown_file=None,
+            markdown_content=markdown_content,
+            rendered_html=rendered_html,
+        )
+
+        tags = [Tag.objects.get_or_create(name=tag_name)[0] for tag_name in tag_names]
+        note.tags.set(tags)
+        return note
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        if not obj.markdown_file:
+            return None
+        url = obj.markdown_file.url
+        return request.build_absolute_uri(url) if request else url
+
+
 class NoteVersionSerializer(serializers.ModelSerializer):
     word_count = serializers.SerializerMethodField()
 

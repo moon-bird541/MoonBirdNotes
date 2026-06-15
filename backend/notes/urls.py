@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     TagListView,
+    NoteCreateView,
     NoteDeleteView,
     NoteDetailView,
     NoteEditView,
@@ -18,6 +19,7 @@ from .views import (
 urlpatterns = [
     path('tags/', TagListView.as_view(), name='tag-list'),
     path('', NoteListView.as_view(), name='note-list'),
+    path('create/', NoteCreateView.as_view(), name='note-create'),
     path('upload/', NoteUploadView.as_view(), name='note-upload'),
     path('preview/', NoteMarkdownPreviewView.as_view(), name='note-preview'),
     path('trash/', TrashNoteListView.as_view(), name='trash-note-list'),
