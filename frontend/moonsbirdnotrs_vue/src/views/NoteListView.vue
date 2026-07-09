@@ -27,6 +27,8 @@ const exportTargetNote = ref(null)
 const selectedNoteIds = ref([])
 const batchDeleting = ref(false)
 const batchMode = ref(false)
+// Bookshelf view is paused for now; keep the old implementation commented for an easy restore.
+// const viewMode = ref(localStorage.getItem('note_list_view_mode') || 'bookshelf')
 const batchExportDialogVisible = ref(false)
 const batchExporting = ref(false)
 const batchTagDialogVisible = ref(false)
@@ -47,6 +49,17 @@ const batchTagModeOptions = [
   { label: '移除标签', value: 'remove' },
   { label: '替换标签', value: 'replace' },
 ]
+// const bookPalettes = [
+//   ['#2251d1', '#60a5fa'],
+//   ['#2563eb', '#7dd3fc'],
+//   ['#0ea5e9', '#67e8f9'],
+//   ['#0f766e', '#5eead4'],
+//   ['#475569', '#94a3b8'],
+//   ['#1d4ed8', '#38bdf8'],
+// ]
+// const BOOKCASE_CAPACITY = 20
+// const BOOKCASE_ROW_SIZE = 5
+// const BOOKCASE_ROW_COUNT = BOOKCASE_CAPACITY / BOOKCASE_ROW_SIZE
 
 let searchTimer = null
 
@@ -63,6 +76,7 @@ const selectedTagName = computed(() => {
   return tag?.name || ''
 })
 const selectedCount = computed(() => selectedNoteIds.value.length)
+// const isBookshelfView = computed(() => viewMode.value === 'bookshelf')
 const batchTagPlaceholder = computed(() => {
   if (batchTagMode.value === 'remove') {
     return '选择要移除的标签'
@@ -83,6 +97,53 @@ const isCurrentPagePartiallySelected = computed(() => (
   currentPageNoteIds.value.some((noteId) => selectedNoteIds.value.includes(noteId))
   && !isCurrentPageAllSelected.value
 ))
+// const buildBookcaseRows = (caseNotes) =>
+//   Array.from({ length: BOOKCASE_ROW_COUNT }, (_, rowIndex) =>
+//     caseNotes.slice(rowIndex * BOOKCASE_ROW_SIZE, (rowIndex + 1) * BOOKCASE_ROW_SIZE)
+//   )
+// const buildBookcases = (groupKey, groupNotes) => {
+//   const caseCount = Math.max(1, Math.ceil(groupNotes.length / BOOKCASE_CAPACITY))
+//
+//   return Array.from({ length: caseCount }, (_, caseIndex) => {
+//     const start = caseIndex * BOOKCASE_CAPACITY
+//     const caseNotes = groupNotes.slice(start, start + BOOKCASE_CAPACITY)
+//
+//     return {
+//       key: `${groupKey}-${caseIndex}`,
+//       index: caseIndex + 1,
+//       title: caseCount > 1 ? `书架 ${caseIndex + 1}` : '书架',
+//       caption: `${caseNotes.length} / ${BOOKCASE_CAPACITY} 本`,
+//       rows: buildBookcaseRows(caseNotes),
+//     }
+//   })
+// }
+// const bookshelfGroups = computed(() => {
+//   const pinnedNotes = notes.value.filter((note) => note.is_pinned)
+//   const regularNotes = notes.value.filter((note) => !note.is_pinned)
+//   const groups = []
+//
+//   if (pinnedNotes.length) {
+//     groups.push({
+//       key: 'pinned',
+//       title: '置顶书签',
+//       caption: `${pinnedNotes.length} 本置顶笔记`,
+//       notes: pinnedNotes,
+//       bookcases: buildBookcases('pinned', pinnedNotes),
+//     })
+//   }
+//
+//   if (regularNotes.length) {
+//     groups.push({
+//       key: 'recent',
+//       title: selectedTagName.value ? `${selectedTagName.value} 书架` : hasActiveFilters.value ? '筛选结果' : '最近创建',
+//       caption: `${regularNotes.length} 本笔记`,
+//       notes: regularNotes,
+//       bookcases: buildBookcases('recent', regularNotes),
+//     })
+//   }
+//
+//   return groups
+// })
 
 // 列表页继续沿用后端分页，避免笔记变多后一次性加载过重。
 const fetchNotes = async (page = 1) => {
@@ -161,6 +222,11 @@ const handleTagChange = () => {
 const handleSortChange = () => {
   fetchNotes(1)
 }
+
+// const setViewMode = (mode) => {
+//   viewMode.value = mode
+//   localStorage.setItem('note_list_view_mode', mode)
+// }
 
 const clearFilters = () => {
   const hadFilters = hasActiveFilters.value
@@ -339,6 +405,41 @@ const togglePinNote = async (note) => {
 }
 
 const normalizeImportance = (value) => Number(value || 0)
+
+// const hashText = (value) => {
+//   const text = String(value || '')
+//   let hash = 0
+//
+//   for (let index = 0; index < text.length; index += 1) {
+//     hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0
+//   }
+//
+//   return Math.abs(hash)
+// }
+//
+// const getPrimaryTagName = (note) => note.tags?.[0]?.name || '未分类'
+//
+// const getBookStyle = (note, index) => {
+//   const hash = hashText(`${note.id}-${note.title}`)
+//   const [colorStart, colorEnd] = bookPalettes[hash % bookPalettes.length]
+//   const wordCount = Number(note.word_count || 0)
+//   const importance = normalizeImportance(note.importance)
+//   const glow = Math.min(0.2, 0.08 + importance * 0.018 + Math.log10(wordCount + 12) * 0.018)
+//   const width = 32 + (hash % 4) * 4 + Math.min(6, Math.round(Math.log10(wordCount + 10) * 3))
+//   const height = Math.min(108, 70 + (hash % 5) * 7 + Math.round(importance * 3) + Math.round(Math.log10(wordCount + 10) * 6))
+//   const rotate = `${((hash % 7) - 3) * 0.45}deg`
+//   const spineWidth = 6 + (index % 3)
+//
+//   return {
+//     '--book-color-start': colorStart,
+//     '--book-color-end': colorEnd,
+//     '--book-width': `${width}px`,
+//     '--book-height': `${height}px`,
+//     '--book-rotate': rotate,
+//     '--book-spine-width': `${spineWidth}px`,
+//     '--book-glow-opacity': glow.toFixed(2),
+//   }
+// }
 
 const updateNoteImportance = async (note, value) => {
   if (updatingImportanceNoteId.value) {
@@ -607,6 +708,24 @@ onBeforeUnmount(() => {
               <span>共 {{ total }} 篇</span>
               <span v-if="totalPages">第 {{ currentPage }} / {{ totalPages }} 页</span>
               <span v-if="selectedTagName">标签：{{ selectedTagName }}</span>
+              <!-- Bookshelf mode is paused; keep the switch here for a quick restore.
+              <div class="view-mode-switch" aria-label="切换笔记展示方式">
+                <button
+                  type="button"
+                  :class="{ 'is-active': isBookshelfView }"
+                  @click="setViewMode('bookshelf')"
+                >
+                  书架
+                </button>
+                <button
+                  type="button"
+                  :class="{ 'is-active': !isBookshelfView }"
+                  @click="setViewMode('list')"
+                >
+                  列表
+                </button>
+              </div>
+              -->
               <el-button
                 v-if="notes.length && !batchMode"
                 class="batch-mode-toggle"
@@ -725,7 +844,173 @@ onBeforeUnmount(() => {
           </div>
 
           <div v-loading="loading" class="stream-shell">
-            <div v-if="notes.length" class="note-stream">
+            <template v-if="notes.length">
+              <!-- Bookshelf view is paused; original list stays as the active view.
+              <div v-if="isBookshelfView" class="bookshelf-view">
+                <section
+                  v-for="group in bookshelfGroups"
+                  :key="group.key"
+                  class="bookshelf-section"
+                >
+                  <div class="bookshelf-title">
+                    <h3>{{ group.title }}</h3>
+                    <span>{{ group.caption }}</span>
+                  </div>
+
+                  <div class="book-floor">
+                    <article
+                      v-for="bookcase in group.bookcases"
+                      :key="bookcase.key"
+                      class="bookcase"
+                      :style="{ '--bookcase-delay': `${Math.min(bookcase.index - 1, 6) * 50}ms` }"
+                    >
+                      <header class="bookcase-head">
+                        <span>{{ bookcase.title }}</span>
+                        <strong>{{ bookcase.caption }}</strong>
+                      </header>
+
+                      <div class="bookcase-frame">
+                        <div
+                          v-for="(rowNotes, rowIndex) in bookcase.rows"
+                          :key="`${bookcase.key}-row-${rowIndex}`"
+                          class="bookcase-tier"
+                        >
+                          <div class="bookcase-row">
+                            <article
+                              v-for="(note, noteIndex) in rowNotes"
+                              :key="note.id"
+                              class="book-card"
+                              :class="{
+                                'is-batch-mode': batchMode,
+                                'is-selected': selectedNoteIds.includes(note.id),
+                                'is-pinned': note.is_pinned,
+                              }"
+                              :style="getBookStyle(note, (bookcase.index - 1) * BOOKCASE_CAPACITY + rowIndex * BOOKCASE_ROW_SIZE + noteIndex)"
+                            >
+                              <label v-if="batchMode" class="book-select" @click.stop>
+                                <el-checkbox
+                                  :model-value="selectedNoteIds.includes(note.id)"
+                                  :aria-label="`选择 ${note.title}`"
+                                  @change="(checked) => toggleNoteSelection(note.id, checked)"
+                                />
+                              </label>
+
+                              <button class="book-volume" type="button" @click="handleNoteMainClick(note)">
+                                <span v-if="note.is_pinned" class="book-ribbon"></span>
+                                <span class="book-title">{{ note.title }}</span>
+                                <span class="book-meta-strip">
+                                  <span>{{ getPrimaryTagName(note) }}</span>
+                                  <span>{{ formatDateTime(note.created_at) }}</span>
+                                </span>
+                              </button>
+
+                              <aside class="book-preview">
+                                <div class="book-preview-main">
+                                  <div class="book-preview-tags">
+                                    <span v-if="note.is_pinned" class="pin-badge">
+                                      <el-icon><StarFilled /></el-icon>
+                                      <span>置顶</span>
+                                    </span>
+                                    <span v-for="tag in note.tags?.slice(0, 2)" :key="tag.id || tag.name" class="note-tag">
+                                      {{ tag.name }}
+                                    </span>
+                                    <span v-if="!note.tags?.length" class="note-tag">未分类</span>
+                                  </div>
+
+                                  <h3>{{ note.title }}</h3>
+                                  <p>{{ note.excerpt || '这本笔记还没有摘要。' }}</p>
+                                </div>
+
+                                <div class="book-preview-side">
+                                  <div class="book-preview-stats">
+                                    <span>{{ formatWordCount(note.word_count) }}</span>
+                                    <span>{{ formatDateTime(note.created_at) }}</span>
+                                  </div>
+
+                                  <div class="book-preview-rate" @click.stop>
+                                    <el-rate
+                                      :model-value="normalizeImportance(note.importance)"
+                                      :max="5"
+                                      allow-half
+                                      clearable
+                                      :colors="importanceRateColors"
+                                      void-color="var(--border-soft)"
+                                      :disabled="updatingImportanceNoteId === note.id"
+                                      @change="(value) => updateNoteImportance(note, value)"
+                                    />
+                                  </div>
+
+                                  <div class="book-preview-actions">
+                                    <el-button class="book-open-button" type="primary" @click="goToDetail(note)">
+                                      打开
+                                    </el-button>
+                                    <el-dropdown
+                                      trigger="click"
+                                      placement="bottom-end"
+                                      @command="(command) => handleAction(command, note)"
+                                      popper-class="beautiful-dropdown"
+                                    >
+                                      <button class="more-button" type="button" aria-label="更多操作">
+                                        <el-icon><MoreFilled /></el-icon>
+                                      </button>
+
+                                      <template #dropdown>
+                                        <el-dropdown-menu class="custom-dropdown-menu">
+                                          <el-dropdown-item command="detail" class="dropdown-item-with-icon">
+                                            <el-icon><View /></el-icon>
+                                            <span>查看详情</span>
+                                          </el-dropdown-item>
+                                          <el-dropdown-item command="edit" class="dropdown-item-with-icon">
+                                            <el-icon><EditPen /></el-icon>
+                                            <span>编辑</span>
+                                          </el-dropdown-item>
+                                          <el-dropdown-item
+                                            command="export"
+                                            class="dropdown-item-with-icon"
+                                            :disabled="exportingNoteId === note.id"
+                                          >
+                                            <el-icon><Download /></el-icon>
+                                            <span>导出</span>
+                                          </el-dropdown-item>
+                                          <el-dropdown-item
+                                            command="pin"
+                                            class="dropdown-item-with-icon dropdown-item-pin"
+                                            :disabled="pinningNoteId === note.id"
+                                          >
+                                            <el-icon>
+                                              <StarFilled v-if="note.is_pinned" />
+                                              <Star v-else />
+                                            </el-icon>
+                                            <span>{{ note.is_pinned ? '取消置顶' : '置顶' }}</span>
+                                          </el-dropdown-item>
+                                          <el-dropdown-item command="delete" class="dropdown-item-with-icon dropdown-item-danger">
+                                            <el-icon><Delete /></el-icon>
+                                            <span>删除</span>
+                                          </el-dropdown-item>
+                                        </el-dropdown-menu>
+                                      </template>
+                                    </el-dropdown>
+                                  </div>
+                                </div>
+                              </aside>
+                            </article>
+
+                            <span
+                              v-for="slotIndex in (BOOKCASE_ROW_SIZE - rowNotes.length)"
+                              :key="`${bookcase.key}-row-${rowIndex}-slot-${slotIndex}`"
+                              class="book-slot"
+                              aria-hidden="true"
+                            ></span>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </section>
+              </div>
+              -->
+
+              <div class="note-stream">
               <article
                 v-for="note in notes"
                 :key="note.id"
@@ -848,7 +1133,8 @@ onBeforeUnmount(() => {
                   </el-dropdown>
                 </aside>
               </article>
-            </div>
+              </div>
+            </template>
 
             <div v-else class="empty-state">
               <p>
@@ -1123,6 +1409,45 @@ onBeforeUnmount(() => {
   margin-left: 0;
 }
 
+/*
+.view-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.76);
+}
+
+.view-mode-switch button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.view-mode-switch button:hover {
+  color: var(--brand-blue);
+}
+
+.view-mode-switch button.is-active {
+  background: #fff;
+  color: var(--brand-blue);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+*/
+
 .search-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) minmax(180px, 230px) auto;
@@ -1236,6 +1561,446 @@ onBeforeUnmount(() => {
 .stream-shell {
   margin-top: 26px;
 }
+
+/*
+.bookshelf-view {
+  display: grid;
+  gap: 28px;
+}
+
+.bookshelf-section {
+  min-width: 0;
+}
+
+.bookshelf-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.bookshelf-title h3 {
+  margin: 0;
+  color: var(--brand-navy);
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.bookshelf-title span {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.book-floor {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 420px));
+  justify-content: start;
+  gap: 22px;
+  padding: 24px;
+  overflow: visible;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.72)),
+    repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.035) 0 1px, transparent 1px 92px),
+    repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.08) 0 1px, transparent 1px 72px);
+  box-shadow: inset 0 -24px 42px rgba(37, 99, 235, 0.04);
+}
+
+.book-floor::before {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  height: 34%;
+  border-radius: 50% 50% 0 0 / 10% 10% 0 0;
+  background: radial-gradient(ellipse at center, rgba(37, 99, 235, 0.08), transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
+.bookcase {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  min-height: 430px;
+  padding: 12px 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 246, 255, 0.86)),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.06), transparent 18%, rgba(14, 165, 233, 0.055));
+  box-shadow:
+    inset 5px 0 0 rgba(37, 99, 235, 0.06),
+    inset -5px 0 0 rgba(14, 165, 233, 0.035),
+    0 18px 34px rgba(37, 99, 235, 0.08);
+  animation: bookcase-rise 0.32s ease var(--bookcase-delay, 0ms) both;
+}
+
+.bookcase::after {
+  position: absolute;
+  right: 28px;
+  bottom: -14px;
+  left: 28px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  content: '';
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.bookcase-head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  padding: 0 8px 10px;
+  color: var(--brand-navy);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-shadow: none;
+}
+
+.bookcase-head strong {
+  color: var(--brand-blue);
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.bookcase-frame {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(4, minmax(82px, 1fr));
+  gap: 0;
+  min-width: 0;
+  padding: 8px 10px 14px;
+  overflow: visible;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.035), transparent 10%, transparent 90%, rgba(14, 165, 233, 0.04)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.52));
+  box-shadow:
+    inset 0 0 0 4px rgba(37, 99, 235, 0.025),
+    inset 0 16px 24px rgba(255, 255, 255, 0.38);
+}
+
+.bookcase-tier {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  min-height: 88px;
+  padding: 8px 6px 14px;
+  overflow: visible;
+}
+
+.bookcase-tier::after {
+  position: absolute;
+  right: -2px;
+  bottom: 6px;
+  left: -2px;
+  height: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(219, 234, 254, 0.78));
+  box-shadow: 0 8px 14px rgba(37, 99, 235, 0.08);
+  content: '';
+}
+
+.bookcase-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 78px;
+  overflow: visible;
+}
+
+.book-slot {
+  flex: 0 0 34px;
+  height: 52px;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 5px 4px 4px 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(219, 234, 254, 0.16));
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.025);
+  opacity: 0.58;
+}
+
+.book-card {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
+.book-volume {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  width: var(--book-width);
+  height: var(--book-height);
+  min-width: 0;
+  padding: 10px 7px 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 6px 4px 4px 6px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 30%),
+    linear-gradient(180deg, var(--book-color-start), var(--book-color-end));
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  box-shadow:
+    inset 6px 0 0 rgba(255, 255, 255, 0.15),
+    inset -3px 0 0 rgba(15, 23, 42, 0.12),
+    0 12px 17px rgba(15, 23, 42, 0.13);
+  cursor: pointer;
+  transform: rotate(var(--book-rotate));
+  transform-origin: bottom center;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    translate 0.22s ease;
+}
+
+.book-volume::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 9px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.38);
+  content: '';
+}
+
+.book-card:hover,
+.book-card:focus-within {
+  z-index: 18;
+}
+
+.book-card:hover .book-volume,
+.book-card:focus-within .book-volume {
+  translate: 0 -7px;
+  transform: rotate(0deg) scale(1.04);
+  box-shadow:
+    inset 6px 0 0 rgba(255, 255, 255, 0.15),
+    inset -3px 0 0 rgba(15, 23, 42, 0.12),
+    0 20px 26px rgba(15, 23, 42, 0.22);
+}
+
+.book-card.is-selected .book-volume {
+  outline: 3px solid rgba(37, 99, 235, 0.32);
+  outline-offset: 4px;
+}
+
+.book-ribbon {
+  position: absolute;
+  top: -1px;
+  right: 8px;
+  width: 9px;
+  height: 29px;
+  border-radius: 0 0 5px 5px;
+  background: #fbbf24;
+  box-shadow: 0 6px 14px rgba(146, 64, 14, 0.2);
+}
+
+.book-title {
+  justify-self: center;
+  max-height: calc(var(--book-height) - 54px);
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.08;
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.18);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.book-meta-strip {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.book-meta-strip span:first-child {
+  width: max-content;
+  max-width: 100%;
+  min-height: 17px;
+  padding: 2px 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.6rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-meta-strip span:last-child {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.58rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-select {
+  position: absolute;
+  z-index: 22;
+  top: -12px;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  transform: translateX(-50%);
+}
+
+.book-select :deep(.el-checkbox) {
+  height: 20px;
+}
+
+.book-select :deep(.el-checkbox__label) {
+  display: none;
+}
+
+.book-preview {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 16px);
+  left: 50%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  width: min(500px, calc(100vw - 360px));
+  min-width: 340px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 24px 54px rgba(15, 23, 42, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px) scale(0.98);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.book-preview::after {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.97);
+  content: '';
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.book-card:hover .book-preview,
+.book-card:focus-within .book-preview {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.book-preview-main {
+  min-width: 0;
+}
+
+.book-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.book-preview h3 {
+  margin: 0;
+  color: var(--brand-navy);
+  font-size: 1.16rem;
+  line-height: 1.2;
+}
+
+.book-preview p {
+  display: -webkit-box;
+  margin: 8px 0 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.book-preview-side {
+  display: grid;
+  align-content: space-between;
+  justify-items: end;
+  gap: 12px;
+}
+
+.book-preview-stats {
+  display: flex;
+  gap: 10px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.book-preview-rate :deep(.el-rate) {
+  --el-rate-icon-size: 15px;
+  height: 18px;
+}
+
+.book-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-open-button {
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+@keyframes bookcase-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+*/
 
 .note-stream {
   display: flex;
@@ -1629,6 +2394,27 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1100px) {
+  /*
+  .book-floor {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 380px));
+    gap: 20px;
+    padding: 22px;
+  }
+
+  .bookcase {
+    min-height: 410px;
+  }
+
+  .bookcase-frame {
+    grid-template-rows: repeat(4, minmax(76px, 1fr));
+  }
+
+  .book-preview {
+    width: min(480px, calc(100vw - 120px));
+    min-width: 320px;
+  }
+  */
+
   .note-row {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -1693,6 +2479,95 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
+  /*
+  .view-mode-switch {
+    width: 100%;
+  }
+
+  .view-mode-switch button {
+    flex: 1;
+  }
+
+  .book-floor {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .bookcase {
+    min-height: 390px;
+    padding: 12px 10px 14px;
+  }
+
+  .bookcase-frame {
+    grid-template-rows: repeat(4, minmax(70px, 1fr));
+    padding: 8px 8px 14px;
+  }
+
+  .bookcase-tier {
+    min-height: 78px;
+    padding: 8px 4px 14px;
+  }
+
+  .bookcase-row {
+    gap: 5px;
+    min-height: 70px;
+  }
+
+  .book-slot {
+    flex-basis: 28px;
+    height: 48px;
+  }
+
+  .book-card {
+    width: auto;
+  }
+
+  .book-volume {
+    width: clamp(28px, var(--book-width), 44px);
+    height: clamp(72px, var(--book-height), 104px);
+    padding: 8px 5px 7px;
+  }
+
+  .book-card:hover .book-volume,
+  .book-card:focus-within .book-volume {
+    translate: 0 -4px;
+  }
+
+  .book-volume::before {
+    top: 8px;
+    bottom: 8px;
+  }
+
+  .book-title {
+    max-height: calc(var(--book-height) - 48px);
+    font-size: 0.66rem;
+    line-height: 1.05;
+    writing-mode: vertical-rl;
+  }
+
+  .book-meta-strip {
+    display: grid;
+    gap: 3px;
+    margin-top: 0;
+  }
+
+  .book-preview {
+    position: static;
+    display: none;
+    width: auto;
+    min-width: 0;
+    margin-top: 10px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .book-preview::after {
+    display: none;
+  }
+  */
+
   .tag-filter-select,
   .sort-select,
   .clear-search-button {
@@ -1741,6 +2616,24 @@ onBeforeUnmount(() => {
     border-radius: 20px;
   }
 
+  /*
+  .bookshelf-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  */
+
+  /*
+  .book-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .book-preview-side {
+    justify-items: start;
+  }
+  */
+
   .note-row {
     gap: 14px;
   }
@@ -1774,6 +2667,7 @@ onBeforeUnmount(() => {
     justify-content: center;
   }
 }
+
 </style>
 
 <style>
