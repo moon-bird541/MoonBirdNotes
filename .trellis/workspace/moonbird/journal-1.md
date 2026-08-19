@@ -43,3 +43,24 @@
 - 修复 Playwright 重复文本定位和现有 el-radio-* 解析警告后重跑 E2E。
 - 单独校正 README 的已实现页面、后续方向、Qdrant 端口与 Token 统计描述。
 - 审阅并分批提交当前 Trellis 初始化和既有产品改动，再归档 00-bootstrap-guidelines。
+
+
+## Session 2: Production baseline and development branch
+
+**Date**: 2026-08-19
+**Task**: Production baseline and development branch
+**Branch**: `main`
+
+### Summary
+
+Committed the deployed MoonBirdNotes production baseline after backend, migration, frontend build, browser-flow, staged-content, and secret checks; prepared a persistent codex/develop branch for all future changes.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1efdc2bae2f9ea6117149b7a6985352678c9994e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
