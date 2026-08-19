@@ -17,6 +17,7 @@ import '@toast-ui/editor/dist/toastui-editor-viewer.css'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
+import diaryEmptyIllustration from '../assets/diary-empty-illustration.png'
 import { applyTableLayoutsToTables, extractTableLayoutMetadata } from '../utils/tableLayout'
 import '../styles/markdown.css'
 
@@ -401,7 +402,7 @@ onBeforeUnmount(() => {
             </el-button>
             <el-button class="glow-action ripple-button" type="primary" @click="handleEditClick($event, 'headerEdit')">
               <el-icon><EditPen /></el-icon>
-              <span>{{ selectedEntry ? '继续编写' : '编写这天' }}</span>
+              <span>{{ selectedEntry ? '继续编写' : '编辑这天' }}</span>
               <span
                 v-for="ripple in buttonRipples.headerEdit"
                 :key="ripple.id"
@@ -522,9 +523,9 @@ onBeforeUnmount(() => {
 
             <template v-else>
               <div class="empty-diary">
+                <img class="empty-diary-illustration" :src="diaryEmptyIllustration" alt="" aria-hidden="true" />
                 <div class="empty-diary-mark">
-                  <el-icon><Calendar /></el-icon>
-                  <strong>{{ selectedDateParts.day }}</strong>
+                  <span>{{ selectedDateLabel }}</span>
                 </div>
                 <p>{{ selectedDateLabel }}</p>
                 <h2 :key="selectedDate" class="typewriter-title"><span>这一天还没有日记</span></h2>
@@ -1389,7 +1390,7 @@ onBeforeUnmount(() => {
 }
 
 .diary-kicker {
-  color: #1d4ed8;
+  color: var(--brand-blue);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.2em;
@@ -1418,9 +1419,9 @@ onBeforeUnmount(() => {
 }
 
 .diary-status-chip.is-empty {
-  border-color: rgba(14, 165, 233, 0.2);
-  background: rgba(240, 249, 255, 0.72);
-  color: #0369a1;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--brand-blue);
 }
 
 .diary-header-actions :deep(.el-button),
@@ -1459,29 +1460,29 @@ onBeforeUnmount(() => {
 }
 
 .diary-header-actions :deep(.el-button:not(.el-button--primary):hover) {
-  border-color: rgba(14, 165, 233, 0.28);
-  background: rgba(240, 249, 255, 0.8);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
   box-shadow:
-    0 14px 28px rgba(34, 81, 209, 0.12),
-    0 0 24px rgba(14, 165, 233, 0.16);
+    0 14px 28px rgba(143, 63, 35, 0.1),
+    0 0 24px rgba(77, 97, 68, 0.12);
 }
 
 .glow-action {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid rgba(34, 81, 209, 0.08) !important;
+  border: 1px solid var(--accent-border) !important;
   background:
-    linear-gradient(135deg, #2251d1 0%, #2f6be8 48%, #0ea5e9 100%) !important;
+    linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-gold) 52%, var(--moss) 100%) !important;
   box-shadow:
-    0 14px 30px rgba(34, 81, 209, 0.24),
-    0 0 26px rgba(14, 165, 233, 0.2) !important;
+    0 14px 30px rgba(143, 63, 35, 0.18),
+    0 0 26px rgba(77, 97, 68, 0.14) !important;
 }
 
 .glow-action:hover {
   box-shadow:
-    0 18px 36px rgba(34, 81, 209, 0.28),
-    0 0 36px rgba(14, 165, 233, 0.28) !important;
+    0 18px 36px rgba(143, 63, 35, 0.22),
+    0 0 36px rgba(77, 97, 68, 0.18) !important;
 }
 
 .ripple-button > :not(.action-ripple) {
@@ -1668,11 +1669,11 @@ onBeforeUnmount(() => {
 }
 
 .day-cell.is-selected span::before {
-  border: 1px solid rgba(34, 81, 209, 0.42);
+  border: 1px solid var(--accent-border);
   box-shadow:
-    0 0 0 6px rgba(34, 81, 209, 0.06),
-    0 0 22px rgba(14, 165, 233, 0.34);
-  animation: selectedDayPulse 2.2s ease-in-out infinite;
+    0 0 0 6px var(--accent-soft),
+    0 0 22px rgba(77, 97, 68, 0.22);
+  animation: selectedDayPulse 2.2s var(--motion-calm) infinite;
 }
 
 .day-cell.is-selected::after {
@@ -2280,12 +2281,12 @@ onBeforeUnmount(() => {
 }
 
 .glow-action {
-  background: linear-gradient(135deg, #2251d1 0%, #2572e8 100%) !important;
-  box-shadow: 0 14px 26px rgba(34, 81, 209, 0.2) !important;
+  background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-gold) 100%) !important;
+  box-shadow: 0 14px 26px rgba(143, 63, 35, 0.18) !important;
 }
 
 .glow-action:hover {
-  box-shadow: 0 16px 30px rgba(34, 81, 209, 0.24) !important;
+  box-shadow: 0 16px 30px rgba(143, 63, 35, 0.22) !important;
 }
 
 .empty-diary {
@@ -2368,5 +2369,499 @@ onBeforeUnmount(() => {
 
 .day-cell.is-selected small {
   color: #52637a;
+}
+
+/* Screenshot restoration: warm diary workspace */
+.diary-page {
+  min-height: 100vh;
+  min-height: 100svh;
+  background:
+    radial-gradient(circle at 86% 8%, rgba(218, 160, 64, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.92), rgba(250, 244, 235, 0.78));
+}
+
+.diary-stage {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 42px 48px 42px 58px;
+}
+
+.diary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 32px;
+  padding: 0;
+}
+
+.diary-kicker {
+  margin: 0 0 10px;
+  color: var(--brand-blue);
+  font-size: 0.86rem;
+  font-weight: 850;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.diary-title-line {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.diary-header h1 {
+  margin: 0;
+  color: #282521;
+  font-size: clamp(3.6rem, 5.3vw, 5.25rem);
+  font-weight: 900;
+  line-height: 0.92;
+}
+
+.diary-date-chip,
+.diary-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(123, 83, 58, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 250, 241, 0.78);
+  color: #62584f;
+  font-size: 0.95rem;
+  font-weight: 750;
+  box-shadow: 0 10px 22px rgba(99, 69, 43, 0.045);
+  backdrop-filter: none;
+}
+
+.diary-date-chip .el-icon,
+.diary-status-chip .el-icon {
+  color: var(--brand-blue);
+}
+
+.diary-status-chip,
+.diary-status-chip.is-empty {
+  border-color: rgba(171, 91, 58, 0.16);
+  background: rgba(255, 246, 237, 0.84);
+  color: var(--brand-blue);
+}
+
+.diary-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-top: 36px;
+}
+
+.diary-header-actions :deep(.el-button),
+.reader-heading :deep(.el-button),
+.empty-diary :deep(.el-button) {
+  min-height: 56px;
+  padding-inline: 24px;
+  border: 1px solid rgba(123, 83, 58, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 250, 241, 0.78);
+  color: #322f2b;
+  font-size: 0.98rem;
+  font-weight: 780;
+  box-shadow: 0 12px 24px rgba(99, 69, 43, 0.06);
+  transition:
+    transform 0.2s var(--motion-snappy),
+    box-shadow 0.2s var(--motion-calm),
+    background 0.2s var(--motion-calm);
+}
+
+.diary-header-actions :deep(.el-button:hover),
+.reader-heading :deep(.el-button:hover),
+.empty-diary :deep(.el-button:hover) {
+  transform: translateY(-1px);
+}
+
+.glow-action {
+  border-color: rgba(150, 70, 38, 0.22) !important;
+  background: linear-gradient(180deg, #c46c43, #a84528) !important;
+  color: #fff !important;
+  box-shadow: 0 16px 28px rgba(150, 70, 38, 0.2) !important;
+}
+
+.diary-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 456px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.diary-calendar-panel,
+.diary-reader {
+  border: 1px solid rgba(123, 83, 58, 0.13);
+  border-radius: 12px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(255, 248, 239, 0.86)),
+    var(--surface) !important;
+  box-shadow:
+    0 18px 42px rgba(99, 69, 43, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76) !important;
+  backdrop-filter: none;
+}
+
+.diary-calendar-panel::before,
+.diary-reader::before {
+  display: none;
+}
+
+.diary-calendar-panel {
+  padding: 30px 28px 28px;
+}
+
+.month-toolbar {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.month-toolbar strong {
+  color: #2c2925;
+  font-size: 1.55rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.icon-button {
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(123, 83, 58, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 250, 241, 0.78);
+  color: #2f2c28;
+  box-shadow: none;
+}
+
+.calendar-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 26px;
+  border: 1px solid rgba(123, 83, 58, 0.12);
+  border-radius: 9px;
+  background: rgba(255, 250, 241, 0.66);
+  box-shadow: none;
+}
+
+.calendar-overview span {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  padding: 16px 20px;
+}
+
+.calendar-overview span + span {
+  border-left: 1px solid rgba(123, 83, 58, 0.12);
+}
+
+.calendar-overview strong {
+  color: #2d2a26;
+  font-size: 1.65rem;
+  font-weight: 900;
+}
+
+.calendar-overview em {
+  color: #6f665e;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: 0 0 14px;
+}
+
+.weekday-row span {
+  color: #635a52;
+  font-size: 0.86rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px 10px;
+}
+
+.day-cell {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #1f1d1a;
+  box-shadow: none;
+}
+
+.day-cell span {
+  width: auto;
+  height: auto;
+  min-width: 30px;
+  color: #201e1b;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.day-cell small {
+  margin-top: 5px;
+  color: #63775b;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.day-cell.is-muted span,
+.day-cell.is-muted small {
+  color: #a9a39c;
+}
+
+.day-cell.is-today {
+  border-color: rgba(91, 119, 78, 0.14);
+  background: rgba(91, 119, 78, 0.08);
+}
+
+.day-cell.has-entry {
+  background: rgba(91, 119, 78, 0.08);
+}
+
+.day-cell.has-entry::after {
+  display: none;
+}
+
+.day-cell.is-selected,
+.day-cell.is-selected:hover {
+  border-color: rgba(150, 70, 38, 0.2);
+  background: linear-gradient(180deg, #c46c43, #a84528);
+  color: #fff;
+  box-shadow: 0 14px 24px rgba(150, 70, 38, 0.22);
+  transform: none;
+}
+
+.day-cell.is-selected span {
+  width: auto;
+  height: auto;
+  min-width: 30px;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
+}
+
+.day-cell.is-selected small {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.day-cell.is-selected span::before,
+.day-cell.is-selected::after {
+  display: none;
+}
+
+.diary-reader {
+  min-height: 724px;
+  padding: 32px;
+}
+
+.reader-heading {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 26px;
+  padding-bottom: 24px;
+  border-bottom: none;
+}
+
+.selected-date-mark {
+  width: 104px;
+  height: 116px;
+  border: 1px solid rgba(123, 83, 58, 0.13);
+  border-radius: 10px;
+  background: rgba(255, 250, 241, 0.86);
+  box-shadow: 0 14px 26px rgba(99, 69, 43, 0.08);
+}
+
+.selected-date-mark::after {
+  display: none;
+}
+
+.selected-date-mark span {
+  color: #665d55;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.selected-date-mark strong {
+  color: var(--brand-blue);
+  font-size: 3.3rem;
+  font-weight: 900;
+  line-height: 0.95;
+  -webkit-text-fill-color: var(--brand-blue);
+}
+
+.reader-heading p {
+  margin: 0 0 8px;
+  color: var(--brand-blue);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.reader-heading h2 {
+  margin: 0;
+  color: #2b2925;
+  font-size: clamp(2rem, 2.7vw, 2.6rem);
+  font-weight: 900;
+}
+
+.reader-heading-copy > span {
+  display: block;
+  margin-top: 8px;
+  color: #71675e;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.reader-heading :deep(.el-button) {
+  min-width: 142px;
+}
+
+.empty-diary {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 516px;
+  padding: 44px 28px;
+  border: 1px dashed rgba(171, 91, 58, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 250, 241, 0.48) !important;
+  box-shadow: none !important;
+}
+
+.empty-diary::before {
+  display: none;
+}
+
+.empty-diary-illustration {
+  display: block;
+  width: min(320px, 78%);
+  height: auto;
+  margin: 0 auto 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 22px rgba(99, 69, 43, 0.08));
+}
+
+.empty-diary-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 40px;
+  margin: 0 0 18px;
+  padding: 0 22px;
+  border: 1px solid rgba(123, 83, 58, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 250, 241, 0.84);
+  color: #75614f;
+  box-shadow: 0 10px 22px rgba(99, 69, 43, 0.05);
+}
+
+.empty-diary-mark span {
+  color: #75614f;
+  font-size: 1rem;
+  font-weight: 780;
+}
+
+.empty-diary > p {
+  display: none;
+}
+
+.empty-diary h2 {
+  margin: 0 0 26px;
+  color: #2b2925;
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-weight: 900;
+}
+
+.typewriter-title span {
+  width: auto;
+  animation: none;
+}
+
+.typewriter-title span::after {
+  display: none;
+}
+
+@media (max-width: 1320px) {
+  .diary-stage {
+    padding: 32px 30px;
+  }
+
+  .diary-layout {
+    grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1080px) {
+  .diary-header {
+    display: grid;
+  }
+
+  .diary-header-actions {
+    padding-top: 0;
+  }
+
+  .diary-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .diary-stage {
+    padding: 24px 16px;
+  }
+
+  .diary-header h1 {
+    font-size: 3.2rem;
+  }
+
+  .diary-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .diary-header-actions :deep(.el-button) {
+    width: 100%;
+  }
+
+  .calendar-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-overview span + span {
+    border-top: 1px solid rgba(123, 83, 58, 0.12);
+    border-left: none;
+  }
+
+  .reader-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-diary {
+    min-height: 420px;
+  }
 }
 </style>

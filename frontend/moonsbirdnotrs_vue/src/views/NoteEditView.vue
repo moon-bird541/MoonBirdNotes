@@ -12,6 +12,7 @@ import '@toast-ui/editor/dist/toastui-editor.css'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import EditorTableOverlays from '../editor/components/EditorTableOverlays.vue'
+import FixedEditorToolbar from '../editor/components/FixedEditorToolbar.vue'
 import FloatingFormatToolbar from '../editor/components/FloatingFormatToolbar.vue'
 import FloatingPreview from '../editor/components/FloatingPreview.vue'
 import NoteEditorPanel from '../editor/components/NoteEditorPanel.vue'
@@ -23,14 +24,20 @@ import VersionPreviewDialog from '../editor/components/VersionPreviewDialog.vue'
 import {
   buildTagPreviewHtml,
   buildTitlePreviewHtml,
+  createFixedToolbarState,
   createToolbarToggleState,
   formatEditorDateTime,
+  getFixedToolbarSnapshot,
   headingOptions,
   resolveFloatingPreviewTitle,
   toPlainTextForCount,
 } from '../editor/editorHelpers'
 import api from '../services/api'
-import { EDITOR_SETTINGS_CHANGE_EVENT, getEditorSettings } from '../utils/editorSettings'
+import {
+  EDITOR_SETTINGS_CHANGE_EVENT,
+  EDITOR_TOOLBAR_MODES,
+  getEditorSettings,
+} from '../utils/editorSettings'
 import {
   MIN_TABLE_COLUMN_WIDTH,
   MIN_TABLE_ROW_HEIGHT,
@@ -82,6 +89,7 @@ const activeTableInfo = ref(null)
 const floatingPreviewVisible = ref(false)
 const hoverBlockHintVisible = ref(false)
 const editorSettings = ref(getEditorSettings())
+const editorPlaceholder = '在这里直接编辑笔记正文'
 const toolbarPosition = reactive({
   top: -9999,
   left: -9999,
@@ -162,6 +170,8 @@ const imageToolbarPosition = reactive({
   top: -9999,
   left: -9999,
 })
+const fixedToolbarState = reactive(createFixedToolbarState())
+const fixedToolbarSelectedText = ref('')
 
 let editorInstance = null
 let activeCodeLanguageInput = null
@@ -201,6 +211,9 @@ const autoSaveStatusText = computed(() => {
 
   return `自动保存：${Math.round(editorSettings.value.autoSaveIntervalMs / 1000)} 秒`
 })
+const isFixedToolbarMode = computed(
+  () => editorSettings.value.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED
+)
 const canDeleteSelectedTableRow = computed(
   () => Boolean(activeTableInfo.value) && activeTableInfo.value.rowIndex > 0 && activeTableInfo.value.rowCount > 2
 )
@@ -2838,6 +2851,17 @@ const rememberEditorSelectionRange = () => {
   lastEditorSelectionRange = [selection.from, selection.to]
 }
 
+const updateFixedToolbarSnapshot = () => {
+  const snapshot = getFixedToolbarSnapshot(getWysiwygView())
+  Object.assign(fixedToolbarState, snapshot.state)
+  fixedToolbarSelectedText.value = snapshot.selectedText
+}
+
+const rememberFixedToolbarSelection = () => {
+  rememberEditorSelectionRange()
+  updateFixedToolbarSnapshot()
+}
+
 const restoreInsertionSelection = () => {
   if (!editorInstance || !lastEditorSelectionRange) {
     return
@@ -2855,6 +2879,32 @@ const restoreInsertionSelection = () => {
 
   editorInstance.focus()
   editorInstance.setSelection(safeStart, safeEnd)
+}
+
+const syncAfterFixedToolbarCommand = () => {
+  updatePreviewFromEditor()
+  nextTick(() => {
+    rememberEditorSelectionRange()
+    updateFixedToolbarSnapshot()
+  })
+}
+
+const runFixedToolbarCommand = (command, payload) => {
+  if (!editorInstance) {
+    return
+  }
+
+  restoreInsertionSelection()
+  editorInstance.exec(command, payload)
+  syncAfterFixedToolbarCommand()
+}
+
+const applyFixedToolbarHeading = (level) => {
+  runFixedToolbarCommand('heading', { level })
+}
+
+const insertFixedToolbarLink = (payload) => {
+  runFixedToolbarCommand('addLink', payload)
 }
 
 const resolveTableInfoFromCell = (cellElement) => {
@@ -2989,6 +3039,100 @@ const bindEditorSelectionListeners = () => {
   if (!rootElement) {
     cleanupEditorSelectionListeners = null
     return
+  }
+
+  const punctuationInputPattern = /^[，。！？；：,.!?;:]$/u
+  let punctuationSelectionFrame = null
+  let editorCompositionActive = false
+
+  const getWysiwygDomSelectionRange = (view) => {
+    const domSelection = window.getSelection()
+    if (
+      !domSelection?.anchorNode ||
+      !domSelection.focusNode ||
+      !view.dom.contains(domSelection.anchorNode) ||
+      !view.dom.contains(domSelection.focusNode)
+    ) {
+      return null
+    }
+
+    try {
+      const anchor = view.posAtDOM(domSelection.anchorNode, domSelection.anchorOffset)
+      const focus = view.posAtDOM(domSelection.focusNode, domSelection.focusOffset)
+      return {
+        from: Math.min(anchor, focus),
+        to: Math.max(anchor, focus),
+        collapsed: domSelection.isCollapsed,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const schedulePunctuationSelectionCollapse = (event) => {
+    const punctuation = event.data || ''
+    const view = getWysiwygView()
+    const target = event.target
+    if (
+      !punctuationInputPattern.test(punctuation) ||
+      !view ||
+      target !== view.dom
+    ) {
+      return
+    }
+
+    const inputRange = getWysiwygDomSelectionRange(view)
+    if (!inputRange) {
+      return
+    }
+
+    const expectedFrom = inputRange.to - punctuation.length
+    const expectedTo = inputRange.to
+    if (punctuationSelectionFrame !== null) {
+      window.cancelAnimationFrame(punctuationSelectionFrame)
+    }
+
+    punctuationSelectionFrame = window.requestAnimationFrame(() => {
+      punctuationSelectionFrame = null
+      const currentView = getWysiwygView()
+      const currentRange = currentView ? getWysiwygDomSelectionRange(currentView) : null
+      if (
+        !currentView ||
+        currentRange?.collapsed !== false ||
+        currentRange.from !== expectedFrom ||
+        currentRange.to !== expectedTo ||
+        currentView.state.doc.textBetween(expectedFrom, expectedTo, '') !== punctuation
+      ) {
+        return
+      }
+
+      window.getSelection()?.collapseToEnd()
+      currentView.dispatch(
+        currentView.state.tr.setSelection(TextSelection.create(currentView.state.doc, expectedTo))
+      )
+    })
+  }
+
+  const handleEditorCompositionStart = (event) => {
+    const view = getWysiwygView()
+    if (view && event.target instanceof Node && view.dom.contains(event.target)) {
+      editorCompositionActive = true
+    }
+  }
+
+  const handleEditorCompositionEnd = (event) => {
+    editorCompositionActive = false
+    schedulePunctuationSelectionCollapse(event)
+  }
+
+  const handleEditorInput = (event) => {
+    if (
+      ['insertText', 'insertCompositionText'].includes(event.inputType) &&
+      !editorCompositionActive &&
+      !event.isComposing
+    ) {
+      schedulePunctuationSelectionCollapse(event)
+    }
   }
 
   const handleSelectionCommit = () => {
@@ -3190,6 +3334,9 @@ const bindEditorSelectionListeners = () => {
   rootElement.addEventListener('mouseup', handleSelectionCommit)
   rootElement.addEventListener('keyup', handleSelectionCommit)
   rootElement.addEventListener('touchend', handleSelectionCommit)
+  rootElement.addEventListener('compositionstart', handleEditorCompositionStart)
+  rootElement.addEventListener('compositionend', handleEditorCompositionEnd)
+  rootElement.addEventListener('input', handleEditorInput)
   rootElement.addEventListener('mousedown', handlePointerDown, true)
   rootElement.addEventListener('keydown', handleEditorKeydown, true)
   rootElement.addEventListener('click', handleEditorClick, true)
@@ -3203,6 +3350,9 @@ const bindEditorSelectionListeners = () => {
     rootElement.removeEventListener('mouseup', handleSelectionCommit)
     rootElement.removeEventListener('keyup', handleSelectionCommit)
     rootElement.removeEventListener('touchend', handleSelectionCommit)
+    rootElement.removeEventListener('compositionstart', handleEditorCompositionStart)
+    rootElement.removeEventListener('compositionend', handleEditorCompositionEnd)
+    rootElement.removeEventListener('input', handleEditorInput)
     rootElement.removeEventListener('mousedown', handlePointerDown, true)
     rootElement.removeEventListener('keydown', handleEditorKeydown, true)
     rootElement.removeEventListener('click', handleEditorClick, true)
@@ -3211,6 +3361,10 @@ const bindEditorSelectionListeners = () => {
     document.removeEventListener('mousemove', handleTableSelectionMove, true)
     document.removeEventListener('mouseup', handleTableSelectionEnd, true)
     rootElement.removeEventListener('click', handleToastContextMenuClick, true)
+    if (punctuationSelectionFrame !== null) {
+      window.cancelAnimationFrame(punctuationSelectionFrame)
+      punctuationSelectionFrame = null
+    }
   }
 }
 
@@ -3465,6 +3619,11 @@ const updatePreviewFromEditor = () => {
 }
 
 const syncToolbarPosition = () => {
+  if (isFixedToolbarMode.value) {
+    hideToolbar()
+    return
+  }
+
   if (!editorInstance || !floatingToolbar.value) {
     return
   }
@@ -4003,6 +4162,7 @@ const applyTable = (rowCount = 3, columnCount = 3) => {
 
   updatePreviewFromEditor()
   updateToolbarState()
+  updateFixedToolbarSnapshot()
 
   nextTick(() => {
     scheduleToolbarSync()
@@ -4658,17 +4818,18 @@ const buildEditor = () => {
     usageStatistics: false,
     toolbarItems: [],
     autofocus: false,
-    placeholder: '在这里直接编辑笔记正文',
     hooks: {
       addImageBlobHook: uploadEditorImage,
     },
     events: {
       change: () => {
         updatePreviewFromEditor()
+        updateFixedToolbarSnapshot()
       },
       caretChange: () => {
         nextTick(() => {
           rememberEditorSelectionRange()
+          updateFixedToolbarSnapshot()
           syncTableMultiCellSelectionState()
           scheduleToolbarSync()
         })
@@ -4676,6 +4837,7 @@ const buildEditor = () => {
       focus: () => {
         nextTick(() => {
           rememberEditorSelectionRange()
+          updateFixedToolbarSnapshot()
           syncTableMultiCellSelectionState()
           scheduleToolbarSync()
         })
@@ -4695,6 +4857,8 @@ const buildEditor = () => {
   editorReady.value = true
   updatePreviewFromEditor()
   nextTick(() => {
+    rememberEditorSelectionRange()
+    updateFixedToolbarSnapshot()
     bindEditorSelectionListeners()
     bindEditorHoverListeners()
   })
@@ -5279,6 +5443,11 @@ const stopAutoSave = () => {
 
 const handleEditorSettingsChange = (event) => {
   editorSettings.value = event.detail || getEditorSettings()
+  if (isFixedToolbarMode.value) {
+    hideToolbar()
+    sideTablePickerVisible.value = false
+    nextTick(updateFixedToolbarSnapshot)
+  }
   startAutoSave()
 }
 
@@ -5429,6 +5598,7 @@ const restoreVersionDirectly = async (version) => {
 const handleDocumentSelection = () => {
   nextTick(() => {
     rememberEditorSelectionRange()
+    updateFixedToolbarSnapshot()
     syncTableMultiCellSelectionState()
     scheduleToolbarSync()
 
@@ -5566,9 +5736,26 @@ onBeforeUnmount(() => {
               @cancel-tag-input="cancelTagInput"
             >
               <template #editor>
+                <FixedEditorToolbar
+                  v-if="isFixedToolbarMode"
+                  :editor-ready="editorReady"
+                  :toolbar-state="fixedToolbarState"
+                  :selected-text="fixedToolbarSelectedText"
+                  :heading-options="headingOptions"
+                  :max-table-rows="MAX_TABLE_ROW_COUNT"
+                  :max-table-columns="MAX_TABLE_COLUMN_COUNT"
+                  @remember-selection="rememberFixedToolbarSelection"
+                  @command="runFixedToolbarCommand"
+                  @apply-heading="applyFixedToolbarHeading"
+                  @insert-link="insertFixedToolbarLink"
+                  @insert-image="triggerEditorImageUpload"
+                  @insert-table="applyTable"
+                />
                 <div
                   ref="editorRoot"
                   class="wysiwyg-editor"
+                  :class="{ 'is-editor-empty': !currentMarkdown.trim() }"
+                  :data-placeholder="editorPlaceholder"
                 ></div>
                 <input
                   ref="imageInsertInput"
@@ -5600,6 +5787,7 @@ onBeforeUnmount(() => {
           </div>
 
           <FloatingFormatToolbar
+            v-if="!isFixedToolbarMode"
             ref="floatingToolbar"
             :visible="toolbarVisible"
             :position="toolbarPosition"
@@ -5639,6 +5827,7 @@ onBeforeUnmount(() => {
         />
 
         <SideTableToolbar
+          v-if="!isFixedToolbarMode"
           v-model:visible="sideTablePickerVisible"
           :editor-ready="editorReady"
           @remember-selection="rememberEditorSelectionRange"
@@ -5729,6 +5918,17 @@ onBeforeUnmount(() => {
   min-width: 0;
   max-width: 100%;
   min-height: 560px;
+}
+
+.wysiwyg-editor.is-editor-empty::before {
+  position: absolute;
+  z-index: 1;
+  top: 22px;
+  left: 24px;
+  color: #94a3b8;
+  line-height: 1.95;
+  pointer-events: none;
+  content: attr(data-placeholder);
 }
 
 .image-replace-input {

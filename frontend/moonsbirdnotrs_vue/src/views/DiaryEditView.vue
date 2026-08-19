@@ -20,8 +20,18 @@ import '@toast-ui/editor/dist/i18n/zh-cn'
 import '@toast-ui/editor/dist/toastui-editor.css'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
+import FixedEditorToolbar from '../editor/components/FixedEditorToolbar.vue'
+import {
+  createFixedToolbarState,
+  getFixedToolbarSnapshot,
+  headingOptions,
+} from '../editor/editorHelpers'
 import api from '../services/api'
-import { EDITOR_SETTINGS_CHANGE_EVENT, getEditorSettings } from '../utils/editorSettings'
+import {
+  EDITOR_SETTINGS_CHANGE_EVENT,
+  EDITOR_TOOLBAR_MODES,
+  getEditorSettings,
+} from '../utils/editorSettings'
 import {
   MAX_TABLE_COLUMN_COUNT,
   MAX_TABLE_ROW_COUNT,
@@ -46,6 +56,8 @@ const tablePickerVisible = ref(false)
 const diaryFieldsCollapsed = ref(false)
 const toolbarVisible = ref(false)
 const selectionRange = ref(null)
+const fixedToolbarSelectionRange = ref(null)
+const fixedToolbarSelectedText = ref('')
 const entry = ref(null)
 const currentMarkdown = ref('')
 const editorSettings = ref(getEditorSettings())
@@ -63,6 +75,7 @@ const imageToolbarPosition = reactive({
   top: -9999,
   left: -9999,
 })
+const fixedToolbarState = reactive(createFixedToolbarState())
 
 const form = reactive({
   title: '',
@@ -79,11 +92,6 @@ let toolbarSyncFrame = null
 let pendingImageSelectionRange = null
 let cleanupEditorImageListeners = null
 
-const headingOptions = [
-  { label: 'H1', value: 1 },
-  { label: 'H2', value: 2 },
-  { label: 'H3', value: 3 },
-]
 const tablePickerRows = Array.from({ length: MAX_TABLE_ROW_COUNT }, (_, index) => index + 1)
 const tablePickerColumns = Array.from({ length: MAX_TABLE_COLUMN_COUNT }, (_, index) => index + 1)
 const tablePickerPreview = reactive({
@@ -155,6 +163,9 @@ const autoSaveStatusText = computed(() => {
 
   return `自动保存：${Math.round(editorSettings.value.autoSaveIntervalMs / 1000)} 秒`
 })
+const isFixedToolbarMode = computed(
+  () => editorSettings.value.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED
+)
 
 const addDaysToSelected = (days) => {
   const date = parseDateKey(selectedDate.value) || new Date()
@@ -245,6 +256,76 @@ const syncMarkdownFromEditor = () => {
 }
 
 const getWysiwygView = () => editorInstance?.wwEditor?.view || null
+
+const updateFixedToolbarSnapshot = () => {
+  const snapshot = getFixedToolbarSnapshot(getWysiwygView())
+  Object.assign(fixedToolbarState, snapshot.state)
+  fixedToolbarSelectedText.value = snapshot.selectedText
+
+  if (snapshot.range) {
+    fixedToolbarSelectionRange.value = snapshot.range
+  }
+}
+
+const rememberFixedToolbarSelection = () => {
+  updateFixedToolbarSnapshot()
+}
+
+const restoreFixedToolbarSelection = () => {
+  if (!editorInstance || !fixedToolbarSelectionRange.value) {
+    return false
+  }
+
+  const view = getWysiwygView()
+  const docSize = view?.state?.doc?.content?.size
+  if (!view || !Number.isFinite(docSize)) {
+    return false
+  }
+
+  const [start, end] = fixedToolbarSelectionRange.value
+  const safeStart = Math.max(0, Math.min(start, docSize))
+  const safeEnd = Math.max(0, Math.min(end, docSize))
+  editorInstance.focus()
+  editorInstance.setSelection(safeStart, safeEnd)
+  return true
+}
+
+const syncAfterFixedToolbarCommand = () => {
+  syncMarkdownFromEditor()
+  nextTick(updateFixedToolbarSnapshot)
+}
+
+const runFixedToolbarCommand = (command, payload) => {
+  if (!editorInstance) {
+    return
+  }
+
+  if (!restoreFixedToolbarSelection()) {
+    editorInstance.focus()
+  }
+  editorInstance.exec(command, payload)
+  syncAfterFixedToolbarCommand()
+}
+
+const applyFixedToolbarHeading = (level) => {
+  runFixedToolbarCommand('heading', { level })
+}
+
+const insertFixedToolbarLink = (payload) => {
+  runFixedToolbarCommand('addLink', payload)
+}
+
+const insertFixedToolbarTable = (rows, columns) => {
+  if (rows > MAX_TABLE_ROW_COUNT || columns > MAX_TABLE_COLUMN_COUNT) {
+    ElMessage.warning(`表格最多支持 ${MAX_TABLE_ROW_COUNT} 行 * ${MAX_TABLE_COLUMN_COUNT} 列`)
+    return
+  }
+
+  runFixedToolbarCommand('addTable', {
+    rowCount: rows,
+    columnCount: columns,
+  })
+}
 
 const getEditorSelection = () => {
   const view = getWysiwygView()
@@ -347,6 +428,11 @@ const restoreSelection = () => {
 }
 
 const syncToolbarPosition = () => {
+  if (isFixedToolbarMode.value) {
+    hideToolbar()
+    return
+  }
+
   if (!editorInstance || !floatingToolbar.value) {
     return
   }
@@ -801,6 +887,18 @@ const triggerImageUpload = () => {
   imageInput.value?.click()
 }
 
+const triggerFixedToolbarImageUpload = () => {
+  if (!editorInstance) {
+    return
+  }
+
+  rememberFixedToolbarSelection()
+  pendingImageSelectionRange = fixedToolbarSelectionRange.value
+    ? [...fixedToolbarSelectionRange.value]
+    : null
+  imageInput.value?.click()
+}
+
 const handleToolbarImageChange = async (event) => {
   const file = event.target.files?.[0]
   event.target.value = ''
@@ -883,16 +981,19 @@ const buildEditor = () => {
     events: {
       change: () => {
         currentMarkdown.value = editorInstance?.getMarkdown() || ''
+        updateFixedToolbarSnapshot()
       },
       caretChange: () => {
         nextTick(() => {
           rememberEditorSelectionRange()
+          updateFixedToolbarSnapshot()
           scheduleToolbarSync()
         })
       },
       focus: () => {
         nextTick(() => {
           rememberEditorSelectionRange()
+          updateFixedToolbarSnapshot()
           scheduleToolbarSync()
         })
       },
@@ -909,6 +1010,7 @@ const buildEditor = () => {
     },
   })
   editorReady.value = true
+  nextTick(updateFixedToolbarSnapshot)
   cleanupEditorImageListeners?.()
   cleanupEditorImageListeners = bindEditorImageListeners()
 }
@@ -1009,6 +1111,10 @@ const startAutoSave = () => {
 
 const handleEditorSettingsChange = (event) => {
   editorSettings.value = event.detail || getEditorSettings()
+  if (isFixedToolbarMode.value) {
+    hideToolbar()
+    nextTick(updateFixedToolbarSnapshot)
+  }
   startAutoSave()
 }
 
@@ -1029,6 +1135,7 @@ const toggleDiaryFields = () => {
 const handleDocumentSelection = () => {
   nextTick(() => {
     rememberEditorSelectionRange()
+    updateFixedToolbarSnapshot()
     scheduleToolbarSync()
   })
 }
@@ -1184,7 +1291,23 @@ onBeforeUnmount(() => {
               <span>{{ saving ? '保存中' : '可编辑' }}</span>
             </div>
 
-            <Teleport to="body">
+            <FixedEditorToolbar
+              v-if="isFixedToolbarMode"
+              :editor-ready="editorReady"
+              :toolbar-state="fixedToolbarState"
+              :selected-text="fixedToolbarSelectedText"
+              :heading-options="headingOptions"
+              :max-table-rows="MAX_TABLE_ROW_COUNT"
+              :max-table-columns="MAX_TABLE_COLUMN_COUNT"
+              @remember-selection="rememberFixedToolbarSelection"
+              @command="runFixedToolbarCommand"
+              @apply-heading="applyFixedToolbarHeading"
+              @insert-link="insertFixedToolbarLink"
+              @insert-image="triggerFixedToolbarImageUpload"
+              @insert-table="insertFixedToolbarTable"
+            />
+
+            <Teleport v-if="!isFixedToolbarMode" to="body">
               <div
                 v-show="toolbarVisible"
                 ref="floatingToolbar"
@@ -1312,13 +1435,6 @@ onBeforeUnmount(() => {
                     <el-icon><Picture /></el-icon>
                   </button>
                 </el-tooltip>
-                <input
-                  ref="imageInput"
-                  class="toolbar-image-input"
-                  type="file"
-                  accept="image/png,image/jpeg,image/gif,image/webp"
-                  @change="handleToolbarImageChange"
-                />
               </div>
               </div>
 
@@ -1358,14 +1474,23 @@ onBeforeUnmount(() => {
               </div>
             </Teleport>
 
-            <div ref="editorRoot" class="diary-editor-root"></div>
-            <input
-              ref="imageReplaceInput"
-              class="toolbar-image-input"
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              @change="handleImageReplacementChange"
-            />
+            <div class="diary-editor-body">
+              <div ref="editorRoot" class="diary-editor-root"></div>
+              <input
+                ref="imageInput"
+                class="toolbar-image-input"
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                @change="handleToolbarImageChange"
+              />
+              <input
+                ref="imageReplaceInput"
+                class="toolbar-image-input"
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                @change="handleImageReplacementChange"
+              />
+            </div>
           </article>
 
           <div
@@ -1665,7 +1790,13 @@ onBeforeUnmount(() => {
 
 .diary-editor-panel {
   min-width: 0;
+  overflow: visible;
+}
+
+.diary-editor-body {
+  min-width: 0;
   overflow: hidden;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .editor-panel-head {

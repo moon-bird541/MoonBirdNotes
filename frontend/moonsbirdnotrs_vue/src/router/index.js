@@ -15,6 +15,24 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/knowledge-chat',
+    name: 'knowledge-chat',
+    component: () => import('../views/KnowledgeChatView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/rag-traces',
+    name: 'rag-traces',
+    component: () => import('../views/RagTraceView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/token-usage',
+    name: 'token-usage',
+    component: () => import('../views/TokenUsageView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/notes/upload',
     name: 'note-upload',
     component: () => import('../views/NoteUploadView.vue'),

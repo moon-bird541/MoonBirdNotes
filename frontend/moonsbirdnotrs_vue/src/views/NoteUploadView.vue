@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Icon } from '@iconify/vue'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
@@ -31,7 +32,7 @@ const fetchTagOptions = async () => {
     const { data } = await api.get('/notes/tags/')
     tagOptions.value = data.map((tag) => tag.name)
   } catch (error) {
-    const detail = error.response?.data?.detail || '获取标签列表失败，请稍后重试。'
+    const detail = error.response?.data?.detail || '标签没拿到。再试一次。'
     ElMessage.error(detail)
   }
 }
@@ -45,7 +46,7 @@ const handleFileChange = (uploadFile) => {
   }
 
   if (!rawFile.name.toLowerCase().endsWith('.md')) {
-    ElMessage.error('只能选择 .md 文件。')
+    ElMessage.error('这里只吃 .md 文件。')
     return
   }
 
@@ -57,7 +58,7 @@ const handleTagChange = (value) => {
   const normalized = [...new Set(value.map((item) => item.trim()).filter(Boolean))]
 
   if (normalized.length > 4) {
-    ElMessage.warning('每篇笔记最多只能填写四个标签。')
+    ElMessage.warning('最多 4 个标签。')
     selectedTagNames.value = normalized.slice(0, 4)
     return
   }
@@ -71,12 +72,12 @@ const clearSelection = () => {
 
 const submitUpload = async () => {
   if (!selectedFile.value) {
-    ElMessage.warning('请先选择一个 Markdown 文件。')
+    ElMessage.warning('先选一个 .md 文件。')
     return
   }
 
   if (!selectedTagNames.value.length) {
-    ElMessage.warning('请至少填写一个标签。')
+    ElMessage.warning('至少给 1 个标签。')
     return
   }
 
@@ -97,13 +98,13 @@ const submitUpload = async () => {
 
     uploadedNote.value = data
     tagOptions.value = [...new Set([...tagOptions.value, ...data.tags.map((tag) => tag.name)])].sort()
-    ElMessage.success('笔记上传成功。')
+    ElMessage.success('收进书桌了。')
   } catch (error) {
     const detail =
       error.response?.data?.tag_names?.[0] ||
       error.response?.data?.file?.[0] ||
       error.response?.data?.detail ||
-      '上传失败，请稍后重试。'
+      '上传没成。再试一次。'
 
     ElMessage.error(detail)
   } finally {
@@ -127,22 +128,27 @@ onMounted(() => {
         <header class="upload-header fade-rise-enter">
           <div class="header-copy">
             <p class="upload-brand">MoonBirdNotes</p>
-            <h1>上传 Markdown 笔记</h1>
+            <h1>把 .md 收进来</h1>
             <p class="upload-subtitle">
-              上传后系统会保留原始 <code>.md</code> 文件，并同步生成可直接展示的 HTML 内容，方便后续整理、预览和展示。
+              原文件会留下。
+              <br />
+              预览也会生成。
             </p>
           </div>
 
           <div class="upload-actions">
-            <el-button plain @click="goToNotes">返回笔记列表</el-button>
+            <el-button plain @click="goToNotes">
+              <Icon icon="ph:arrow-left" />
+              返回列表
+            </el-button>
           </div>
         </header>
 
         <section class="upload-workspace">
           <div class="upload-main fade-rise-enter-delay">
             <div class="section-copy">
-              <p class="section-tag">Primary Action</p>
-              <h2>选择文件并填写标签</h2>
+              <p class="section-tag">Upload</p>
+              <h2>选文件，贴标签</h2>
             </div>
 
             <el-upload
@@ -154,20 +160,20 @@ onMounted(() => {
               :on-change="handleFileChange"
             >
               <div class="dropzone-content">
-                <span class="dropzone-badge">.md</span>
+                <span class="dropzone-badge"><Icon icon="ph:file-md" /> .md</span>
                 <strong>拖拽文件到这里</strong>
-                <p>或者点击这块区域，选择本地 Markdown 文件</p>
+                <p>点一下也行。</p>
               </div>
             </el-upload>
 
             <div class="upload-hint">
-              <span>建议使用 UTF-8 编码的 Markdown 文件，标题会优先读取一级标题。</span>
+              <span>UTF-8 最省心。标题优先读一级标题。</span>
             </div>
 
             <div class="tag-section">
               <div class="tag-head">
                 <p>笔记标签</p>
-                <span>必填，最多 4 个，可直接输入新标签</span>
+                <span>必填。最多 4 个。</span>
               </div>
 
               <el-select
@@ -180,7 +186,7 @@ onMounted(() => {
                 :reserve-keyword="false"
                 collapse-tags
                 collapse-tags-tooltip
-                placeholder="选择已有标签，或输入新标签后回车"
+                placeholder="选标签，或输入新标签"
                 @change="handleTagChange"
               >
                 <el-option
@@ -216,6 +222,7 @@ onMounted(() => {
 
             <div class="button-row">
               <el-button class="upload-button" type="primary" :loading="uploading" @click="submitUpload">
+                <Icon icon="ph:upload-simple" />
                 上传笔记
               </el-button>
               <el-button v-if="selectedFile" plain @click="clearSelection">清空选择</el-button>
@@ -225,7 +232,7 @@ onMounted(() => {
           <aside class="upload-side fade-rise-enter-delay-2">
             <div class="section-copy">
               <p class="section-tag">Preview</p>
-              <h2>上传结果预览</h2>
+              <h2>收进去之后</h2>
             </div>
 
             <div class="preview-scroll">
@@ -258,7 +265,7 @@ onMounted(() => {
               <div v-else class="preview-empty">
                 <div class="preview-empty-mark">HTML</div>
                 <h3>这里会出现渲染结果</h3>
-                <p>上传成功后，将展示标题、标签、文件地址以及 Markdown 转换后的 HTML 预览。</p>
+                <p>上传成功后。这里给你看一眼。</p>
               </div>
             </div>
           </aside>
@@ -271,6 +278,7 @@ onMounted(() => {
 <style scoped>
 .upload-page {
   padding: 20px;
+  background: transparent;
 }
 
 .upload-stage {
@@ -294,7 +302,7 @@ onMounted(() => {
   color: var(--brand-blue);
   font-size: 0.84rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -303,7 +311,7 @@ onMounted(() => {
   color: var(--brand-navy);
   font-size: clamp(2.5rem, 4.5vw, 5rem);
   line-height: 0.96;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .upload-subtitle {
@@ -311,13 +319,13 @@ onMounted(() => {
   margin: 18px 0 0;
   color: var(--ink-soft);
   font-size: 1rem;
-  line-height: 1.9;
+  line-height: 1.8;
 }
 
 .upload-subtitle code {
   padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
   color: var(--brand-blue);
 }
 
@@ -327,20 +335,27 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.upload-actions :deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .upload-workspace {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(360px, 0.75fr);
   gap: 28px;
   margin-top: 36px;
+  align-items: start;
 }
 
 .upload-main,
 .upload-side {
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 30px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.64)),
-    rgba(255, 255, 255, 0.68);
+    linear-gradient(160deg, rgba(250, 244, 233, 0.9), rgba(232, 219, 199, 0.68)),
+    var(--surface);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(20px);
 }
@@ -360,7 +375,7 @@ onMounted(() => {
   color: var(--brand-navy);
   font-size: 1.9rem;
   line-height: 1.08;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .upload-dropzone {
@@ -369,19 +384,21 @@ onMounted(() => {
 
 .upload-dropzone :deep(.el-upload-dragger) {
   min-height: 320px;
-  border: 1px dashed rgba(37, 99, 235, 0.28);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
+  border: 1px dashed var(--accent-border);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(247, 240, 227, 0.9), rgba(232, 219, 199, 0.52)),
+    var(--surface);
   transition:
-    border-color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color 0.2s var(--motion-calm),
+    transform 0.2s var(--motion-snappy),
+    box-shadow 0.2s var(--motion-calm);
 }
 
 .upload-dropzone :deep(.el-upload-dragger:hover) {
-  border-color: rgba(37, 99, 235, 0.48);
-  transform: translateY(-2px);
-  box-shadow: 0 24px 56px rgba(37, 99, 235, 0.12);
+  border-color: var(--brand-blue);
+  transform: translateY(-2px) rotate(-0.25deg);
+  box-shadow: 0 24px 56px rgba(143, 63, 35, 0.12);
 }
 
 .dropzone-content {
@@ -397,14 +414,15 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-width: 76px;
   min-height: 36px;
   padding: 0 14px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
   color: var(--brand-blue);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
 }
 
 .dropzone-content strong {
@@ -429,9 +447,9 @@ onMounted(() => {
 .tag-section {
   margin-top: 24px;
   padding: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(250, 244, 233, 0.72);
 }
 
 .tag-head {
@@ -460,16 +478,16 @@ onMounted(() => {
 
 .tag-select :deep(.el-select__wrapper) {
   min-height: 52px;
-  border-radius: 16px;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.18) inset;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px var(--border-soft) inset;
 }
 
 .selected-file-card {
   margin-top: 24px;
   padding: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(250, 244, 233, 0.72);
 }
 
 .selected-file-head p {
@@ -494,8 +512,8 @@ onMounted(() => {
 .meta-pill {
   min-width: 138px;
   padding: 14px 16px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
 }
 
 .meta-pill span {
@@ -517,6 +535,9 @@ onMounted(() => {
 }
 
 .upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 52px;
   padding-inline: 28px;
   border: none;
@@ -528,8 +549,8 @@ onMounted(() => {
 .preview-card,
 .preview-empty {
   margin-top: 26px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.76);
+  border-radius: var(--radius-md);
+  background: rgba(250, 244, 233, 0.76);
 }
 
 .preview-scroll {
@@ -546,7 +567,7 @@ onMounted(() => {
 
 .preview-scroll::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(91, 100, 120, 0.28);
+  background: rgba(88, 73, 58, 0.28);
 }
 
 .preview-scroll::-webkit-scrollbar-track {
@@ -555,7 +576,7 @@ onMounted(() => {
 
 .preview-card {
   padding: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border-soft);
 }
 
 .preview-meta {
@@ -565,7 +586,7 @@ onMounted(() => {
 
 .preview-row {
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .preview-row:last-child {
@@ -596,8 +617,8 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
   color: var(--brand-blue);
   font-size: 0.84rem;
   font-weight: 600;
@@ -606,7 +627,7 @@ onMounted(() => {
 .html-preview {
   margin-top: 30px;
   padding-top: 24px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid var(--border-soft);
 }
 
 .preview-empty {
@@ -614,7 +635,7 @@ onMounted(() => {
   display: grid;
   place-items: center;
   padding: 36px;
-  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border: 1px dashed var(--border-soft);
   text-align: center;
 }
 
@@ -623,7 +644,7 @@ onMounted(() => {
   color: var(--brand-blue);
   font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -632,7 +653,7 @@ onMounted(() => {
   color: var(--brand-navy);
   font-size: 1.5rem;
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .preview-empty p {

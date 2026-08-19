@@ -9,6 +9,138 @@ export const createToolbarToggleState = () => ({
   full: false,
 })
 
+export const createFixedToolbarState = () => ({
+  strong: createToolbarToggleState(),
+  italic: createToolbarToggleState(),
+  strike: createToolbarToggleState(),
+  code: createToolbarToggleState(),
+  link: createToolbarToggleState(),
+  blockQuote: createToolbarToggleState(),
+  bulletList: createToolbarToggleState(),
+  orderedList: createToolbarToggleState(),
+  taskList: createToolbarToggleState(),
+  codeBlock: createToolbarToggleState(),
+  headings: headingOptions.reduce((map, option) => {
+    map[option.value] = createToolbarToggleState()
+    return map
+  }, {}),
+})
+
+const createToggleFromContexts = (contexts, predicate) => ({
+  active: contexts.some(predicate),
+  full: contexts.length > 0 && contexts.every(predicate),
+})
+
+const getResolvedPositionAncestors = ($position) => {
+  const ancestors = []
+
+  for (let depth = 0; depth <= $position.depth; depth += 1) {
+    ancestors.push($position.node(depth))
+  }
+
+  return ancestors
+}
+
+const collectSelectionContexts = (view) => {
+  const { doc, selection } = view.state
+
+  if (selection.empty) {
+    return [
+      {
+        marks: view.state.storedMarks || selection.$from.marks(),
+        ancestors: getResolvedPositionAncestors(selection.$from),
+      },
+    ]
+  }
+
+  const contexts = []
+  doc.nodesBetween(selection.from, selection.to, (node, position) => {
+    if (!node.isText) {
+      return true
+    }
+
+    const resolvedPosition = doc.resolve(Math.min(position + 1, doc.content.size))
+    contexts.push({
+      marks: node.marks,
+      ancestors: getResolvedPositionAncestors(resolvedPosition),
+    })
+    return false
+  })
+
+  if (!contexts.length) {
+    contexts.push({
+      marks: selection.$from.marks(),
+      ancestors: getResolvedPositionAncestors(selection.$from),
+    })
+  }
+
+  return contexts
+}
+
+const contextHasMark = (context, markName) =>
+  context.marks.some((mark) => mark.type.name === markName)
+
+const contextHasAncestor = (context, nodeName, predicate = () => true) =>
+  context.ancestors.some((node) => node.type.name === nodeName && predicate(node))
+
+const contextIsTaskList = (context) =>
+  contextHasAncestor(context, 'listItem', (node) => Boolean(node.attrs?.task))
+
+export const getFixedToolbarSnapshot = (view) => {
+  const emptySnapshot = {
+    range: null,
+    selectedText: '',
+    state: createFixedToolbarState(),
+  }
+
+  if (!view?.state?.selection) {
+    return emptySnapshot
+  }
+
+  const { doc, selection } = view.state
+  const contexts = collectSelectionContexts(view)
+  const state = createFixedToolbarState()
+
+  const markDefinitions = [
+    ['strong', 'strong'],
+    ['italic', 'emph'],
+    ['strike', 'strike'],
+    ['code', 'code'],
+    ['link', 'link'],
+  ]
+
+  markDefinitions.forEach(([stateKey, markName]) => {
+    state[stateKey] = createToggleFromContexts(contexts, (context) => contextHasMark(context, markName))
+  })
+
+  state.blockQuote = createToggleFromContexts(contexts, (context) =>
+    contextHasAncestor(context, 'blockQuote')
+  )
+  state.orderedList = createToggleFromContexts(contexts, (context) =>
+    contextHasAncestor(context, 'orderedList')
+  )
+  state.taskList = createToggleFromContexts(contexts, contextIsTaskList)
+  state.bulletList = createToggleFromContexts(
+    contexts,
+    (context) => contextHasAncestor(context, 'bulletList') && !contextIsTaskList(context)
+  )
+  state.codeBlock = createToggleFromContexts(contexts, (context) =>
+    contextHasAncestor(context, 'codeBlock')
+  )
+
+  headingOptions.forEach(({ value }) => {
+    state.headings[value] = createToggleFromContexts(contexts, (context) =>
+      contextHasAncestor(context, 'heading', (node) => node.attrs?.level === value)
+    )
+  })
+
+  return {
+    range: [selection.from, selection.to],
+    selectedText: selection.empty ? '' : doc.textBetween(selection.from, selection.to, '\n'),
+    state,
+  }
+}
+
 export const toPlainTextForCount = (markdownContent = '') =>
   markdownContent
     .replace(/```[\s\S]*?```/g, ' ')

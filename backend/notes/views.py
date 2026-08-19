@@ -21,6 +21,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.views import APIView
 
+from rag.services import enqueue_note_ids_on_commit
+
 from .models import DiaryEntry, Note, NoteImage, NoteVersion, Tag
 from .serializers import (
     DiaryEntryCreateSerializer,
@@ -1170,11 +1172,15 @@ class NoteBatchDeleteView(APIView):
             normalized_ids.append(note_id)
 
         deleted_at = timezone.now()
-        deleted_count = get_active_regular_notes().filter(id__in=normalized_ids).update(
+        queryset = get_active_regular_notes().filter(id__in=normalized_ids)
+        affected_ids = list(queryset.values_list('id', flat=True))
+        deleted_count = queryset.update(
             is_deleted=True,
             deleted_at=deleted_at,
             updated_at=deleted_at,
         )
+        # QuerySet.update 不触发 save signal，需要显式在提交后排队清理索引。
+        enqueue_note_ids_on_commit(affected_ids, reason='notes_batch_deleted')
 
         return Response(
             {
@@ -1302,11 +1308,15 @@ class TrashNoteBatchRestoreView(APIView):
             normalized_ids.append(note_id)
 
         restored_at = timezone.now()
-        restored_count = get_deleted_regular_notes().filter(id__in=normalized_ids).update(
+        queryset = get_deleted_regular_notes().filter(id__in=normalized_ids)
+        affected_ids = list(queryset.values_list('id', flat=True))
+        restored_count = queryset.update(
             is_deleted=False,
             deleted_at=None,
             updated_at=restored_at,
         )
+        # 恢复后仅由 Worker 判断是重新索引还是保持未授权状态。
+        enqueue_note_ids_on_commit(affected_ids, reason='notes_batch_restored')
 
         return Response(
             {

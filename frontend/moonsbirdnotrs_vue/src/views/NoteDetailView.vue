@@ -810,14 +810,14 @@ onBeforeUnmount(() => {
 }
 
 .export-dropdown-popper .el-dropdown-menu__item.export-dropdown-item .el-icon {
-  color: #2563eb !important;
+  color: var(--brand-blue) !important;
   font-size: 17px !important;
 }
 
 .export-dropdown-popper .el-dropdown-menu__item.export-dropdown-item:hover,
 .export-dropdown-popper .el-dropdown-menu__item.export-dropdown-item:focus {
   transform: translateY(-1px);
-  background: rgba(37, 99, 235, 0.08) !important;
-  color: #1d4ed8 !important;
+  background: var(--accent-soft) !important;
+  color: var(--brand-blue) !important;
 }
 </style>

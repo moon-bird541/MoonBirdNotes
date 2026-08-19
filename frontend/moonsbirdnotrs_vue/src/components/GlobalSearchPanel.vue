@@ -1,8 +1,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Calendar, Close, Document, EditPen, Search, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { Icon } from '@iconify/vue'
 
 import api from '../services/api'
 import { buildHighlightParts } from '../utils/highlight'
@@ -80,7 +80,7 @@ const fetchResults = async () => {
     results.value = data.results || []
     total.value = data.count || 0
   } catch (error) {
-    const detail = error.response?.data?.detail || '搜索失败，请稍后重试。'
+    const detail = error.response?.data?.detail || '没搜出来。再试一次。'
     ElMessage.error(detail)
   } finally {
     if (currentRequestId === requestId) {
@@ -171,8 +171,12 @@ onBeforeUnmount(() => {
       aria-label="全局搜索"
       @click="openSearch"
     >
-      <el-icon class="search-icon"><Search /></el-icon>
+      <Icon class="search-icon" icon="ph:magnifying-glass" />
       <span v-if="!compact">全局搜索</span>
+      <span v-if="!compact" class="search-shortcut">
+        <kbd>⌘</kbd>
+        <kbd>K</kbd>
+      </span>
     </button>
 
     <el-dialog
@@ -191,7 +195,7 @@ onBeforeUnmount(() => {
             <h2>全局搜索</h2>
           </div>
           <button class="search-close" type="button" aria-label="关闭搜索" @click="closeSearch">
-            <el-icon><Close /></el-icon>
+            <Icon icon="ph:x" />
           </button>
         </header>
 
@@ -204,7 +208,7 @@ onBeforeUnmount(() => {
           @keyup.enter="openFirstResult"
         >
           <template #prefix>
-            <el-icon><Search /></el-icon>
+            <Icon icon="ph:magnifying-glass" />
           </template>
         </el-input>
 
@@ -218,10 +222,7 @@ onBeforeUnmount(() => {
             <article v-for="result in results" :key="`${result.type}-${result.id}`" class="result-row">
               <button class="result-main" type="button" @click="openResult(result)">
                 <span class="result-icon">
-                  <el-icon>
-                    <Calendar v-if="isDiaryResult(result)" />
-                    <Document v-else />
-                  </el-icon>
+                  <Icon :icon="isDiaryResult(result) ? 'ph:calendar-blank' : 'ph:notebook'" />
                 </span>
                 <span class="result-copy">
                   <strong>
@@ -251,19 +252,19 @@ onBeforeUnmount(() => {
               <div class="result-side">
                 <span>{{ formatDateTime(result.updated_at) }}</span>
                 <button type="button" aria-label="查看" @click="openResult(result)">
-                  <el-icon><View /></el-icon>
+                  <Icon icon="ph:eye" />
                 </button>
                 <button type="button" aria-label="编辑" @click="openResult(result, true)">
-                  <el-icon><EditPen /></el-icon>
+                  <Icon icon="ph:pencil-line" />
                 </button>
               </div>
             </article>
           </div>
 
           <div v-else class="search-empty">
-            <el-icon><Search /></el-icon>
-            <h3>{{ normalizedKeyword ? '没有找到匹配内容' : '还没有可搜索的内容' }}</h3>
-            <p>{{ normalizedKeyword ? '换一个关键词再试试。' : '创建笔记或日记后会显示在这里。' }}</p>
+            <Icon icon="ph:magnifying-glass" />
+            <h3>{{ normalizedKeyword ? '没找到' : '还没东西可搜' }}</h3>
+            <p>{{ normalizedKeyword ? '换个词试试。' : '先写一篇。' }}</p>
           </div>
         </section>
       </section>
@@ -275,22 +276,23 @@ onBeforeUnmount(() => {
 .global-search-button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 44px;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
   padding: 0 16px;
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  background: var(--surface);
-  color: var(--text-primary);
+  border: 1px solid rgba(123, 83, 58, 0.13);
+  border-radius: 12px;
+  background: rgba(255, 250, 241, 0.76);
+  color: #2f3430;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease,
-    color 0.2s ease;
+    transform 0.2s var(--motion-snappy),
+    border-color 0.2s var(--motion-calm),
+    background 0.2s var(--motion-calm),
+    color 0.2s var(--motion-calm);
 }
 
 .global-search-button:hover {
@@ -305,12 +307,35 @@ onBeforeUnmount(() => {
   height: 46px;
   min-height: 46px;
   padding: 0;
-  border-radius: 18px;
+  justify-content: center;
+  border-radius: 12px;
 }
 
 .search-icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   flex: 0 0 auto;
+}
+
+.search-shortcut {
+  display: inline-flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.search-shortcut kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid rgba(123, 83, 58, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 250, 241, 0.74);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .search-command {
@@ -358,16 +383,16 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease;
+    transform 0.18s var(--motion-snappy),
+    border-color 0.18s var(--motion-calm),
+    background 0.18s var(--motion-calm),
+    color 0.18s var(--motion-calm);
 }
 
 .search-close {
   width: 38px;
   height: 38px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 }
 
 .search-close:hover,
@@ -380,7 +405,7 @@ onBeforeUnmount(() => {
 
 .command-input :deep(.el-input__wrapper) {
   min-height: 52px;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: var(--surface-soft);
   box-shadow: 0 0 0 1px var(--border-soft);
 }
@@ -453,8 +478,16 @@ onBeforeUnmount(() => {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--moss-soft);
+  color: var(--moss);
+}
+
+.result-icon svg,
+.result-side svg,
+.search-close svg,
+.search-empty > svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .result-copy {
@@ -490,7 +523,7 @@ onBeforeUnmount(() => {
   align-items: center;
   min-height: 22px;
   padding: 0 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--accent);
   font-size: 0.74rem;
@@ -545,9 +578,10 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
-.search-empty :deep(.el-icon) {
+.search-empty > svg {
   color: var(--accent);
-  font-size: 1.8rem;
+  width: 1.8rem;
+  height: 1.8rem;
 }
 
 .search-empty h3 {
@@ -558,8 +592,10 @@ onBeforeUnmount(() => {
 :global(.global-search-dialog.el-dialog) {
   overflow: hidden;
   border: 1px solid var(--border-soft);
-  border-radius: 18px;
-  background: var(--surface);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(250, 244, 233, 0.96), rgba(232, 219, 199, 0.82)),
+    var(--surface);
   box-shadow: var(--shadow-soft);
 }
 

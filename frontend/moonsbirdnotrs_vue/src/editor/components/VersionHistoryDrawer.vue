@@ -315,11 +315,11 @@ defineEmits(['close', 'preview', 'toggle'])
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-gold));
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 12px rgba(143, 63, 35, 0.28);
 }
 
 @media (max-width: 520px) {

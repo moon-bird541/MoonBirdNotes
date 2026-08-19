@@ -1,0 +1,3 @@
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Preserve Vue component lifecycle, event-listener cleanup, and selection-toolbar contracts while changing the editor input path."}
+{"file":".trellis/spec/frontend/state-management.md","reason":"The bug involves ephemeral editor selection state and global selection/input listeners."}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"Defines build, Playwright, and high-risk NoteEditView verification expectations."}

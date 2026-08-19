@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Check, Moon, Setting, Sunny } from '@element-plus/icons-vue'
+import { Icon } from '@iconify/vue'
 
 import {
+  EDITOR_TOOLBAR_MODES,
   MAX_EDITOR_FONT_SIZE_PX,
   MAX_NOTE_LIST_PAGE_SIZE,
   MIN_EDITOR_FONT_SIZE_PX,
@@ -28,6 +29,9 @@ const effectiveTheme = ref(getEffectiveTheme())
 const editorSettings = ref(getEditorSettings())
 const compact = computed(() => props.collapsed && !props.mobile)
 const isDarkTheme = computed(() => effectiveTheme.value === THEMES.DARK)
+const toolbarModeStatusText = computed(() =>
+  editorSettings.value.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED ? '固定工具栏' : '选区工具栏'
+)
 const themeStatusText = computed(() => {
   if (currentTheme.value === THEMES.SYSTEM) {
     return `跟随系统：${isDarkTheme.value ? '黑夜模式' : '白天模式'}`
@@ -71,6 +75,10 @@ const setAutoSaveEnabled = (value) => {
   })
 }
 
+const setToolbarMode = (toolbarMode) => {
+  editorSettings.value = updateEditorSettings({ toolbarMode })
+}
+
 const handleThemeChange = (event) => {
   currentTheme.value = event.detail?.theme || getStoredTheme()
   effectiveTheme.value = event.detail?.effectiveTheme || getEffectiveTheme()
@@ -100,7 +108,7 @@ onBeforeUnmount(() => {
         :title="compact ? '设置' : undefined"
         aria-label="设置"
       >
-        <el-icon class="settings-icon"><Setting /></el-icon>
+        <Icon class="settings-icon" icon="ph:gear-six" />
         <span v-if="!compact">设置</span>
       </button>
     </template>
@@ -124,9 +132,9 @@ onBeforeUnmount(() => {
             :class="{ 'is-active': currentTheme === THEMES.SYSTEM }"
             @click="setTheme(THEMES.SYSTEM)"
           >
-            <el-icon><Setting /></el-icon>
+            <Icon icon="ph:monitor" />
             <span>跟随系统</span>
-            <el-icon v-if="currentTheme === THEMES.SYSTEM" class="check-icon"><Check /></el-icon>
+            <Icon v-if="currentTheme === THEMES.SYSTEM" class="check-icon" icon="ph:check" />
           </button>
           <button
             type="button"
@@ -134,9 +142,9 @@ onBeforeUnmount(() => {
             :class="{ 'is-active': currentTheme === THEMES.LIGHT }"
             @click="setTheme(THEMES.LIGHT)"
           >
-            <el-icon><Sunny /></el-icon>
+            <Icon icon="ph:sun" />
             <span>白天</span>
-            <el-icon v-if="currentTheme === THEMES.LIGHT" class="check-icon"><Check /></el-icon>
+            <Icon v-if="currentTheme === THEMES.LIGHT" class="check-icon" icon="ph:check" />
           </button>
           <button
             type="button"
@@ -144,9 +152,9 @@ onBeforeUnmount(() => {
             :class="{ 'is-active': currentTheme === THEMES.DARK }"
             @click="setTheme(THEMES.DARK)"
           >
-            <el-icon><Moon /></el-icon>
+            <Icon icon="ph:moon" />
             <span>黑夜</span>
-            <el-icon v-if="currentTheme === THEMES.DARK" class="check-icon"><Check /></el-icon>
+            <Icon v-if="currentTheme === THEMES.DARK" class="check-icon" icon="ph:check" />
           </button>
         </div>
       </div>
@@ -176,7 +184,34 @@ onBeforeUnmount(() => {
       <div class="settings-row">
         <div class="settings-row-copy">
           <strong>编辑器设置</strong>
-          <span>{{ editorSettings.autoSaveEnabled ? '自动保存已开启' : '自动保存已关闭' }}</span>
+          <span>{{ toolbarModeStatusText }}</span>
+        </div>
+
+        <div class="setting-line setting-line-stack">
+          <div>
+            <strong>正文工具栏</strong>
+            <span>固定模式会在笔记和日记正文上方常驻显示</span>
+          </div>
+          <div class="toolbar-mode-segment" role="group" aria-label="正文工具栏模式">
+            <button
+              type="button"
+              class="toolbar-mode-option"
+              :class="{ 'is-active': editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.CURRENT }"
+              :aria-pressed="editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.CURRENT"
+              @click="setToolbarMode(EDITOR_TOOLBAR_MODES.CURRENT)"
+            >
+              当前模式
+            </button>
+            <button
+              type="button"
+              class="toolbar-mode-option"
+              :class="{ 'is-active': editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED }"
+              :aria-pressed="editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED"
+              @click="setToolbarMode(EDITOR_TOOLBAR_MODES.FIXED)"
+            >
+              固定工具栏
+            </button>
+          </div>
         </div>
 
         <div class="setting-line">
@@ -241,22 +276,23 @@ onBeforeUnmount(() => {
 .settings-button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 44px;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
   padding: 0 16px;
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  background: var(--surface);
-  color: var(--text-primary);
+  border: 1px solid rgba(123, 83, 58, 0.13);
+  border-radius: 12px;
+  background: rgba(255, 250, 241, 0.76);
+  color: #2f3430;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease,
-    color 0.2s ease;
+    transform 0.2s var(--motion-snappy),
+    border-color 0.2s var(--motion-calm),
+    background 0.2s var(--motion-calm),
+    color 0.2s var(--motion-calm);
 }
 
 .settings-button:hover {
@@ -271,11 +307,13 @@ onBeforeUnmount(() => {
   height: 46px;
   min-height: 46px;
   padding: 0;
-  border-radius: 18px;
+  justify-content: center;
+  border-radius: 12px;
 }
 
 .settings-icon {
-  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
   flex: 0 0 auto;
 }
 
@@ -414,6 +452,48 @@ onBeforeUnmount(() => {
   --el-slider-button-size: 16px;
 }
 
+.toolbar-mode-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.toolbar-mode-option {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.toolbar-mode-option:hover,
+.toolbar-mode-option:focus-visible {
+  border-color: var(--accent-border);
+  outline: none;
+  color: var(--accent);
+}
+
+.toolbar-mode-option.is-active {
+  border-color: var(--accent-border);
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 4px 12px rgba(78, 54, 38, 0.08);
+}
+
 .theme-segment {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -429,7 +509,7 @@ onBeforeUnmount(() => {
   min-height: 42px;
   padding: 0 8px;
   border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--surface-soft);
   color: var(--text-secondary);
   font: inherit;
@@ -437,9 +517,10 @@ onBeforeUnmount(() => {
   font-weight: 700;
   cursor: pointer;
   transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease;
+    border-color 0.18s var(--motion-calm),
+    background 0.18s var(--motion-calm),
+    color 0.18s var(--motion-calm),
+    transform 0.18s var(--motion-snappy);
 }
 
 .theme-option span {
@@ -455,14 +536,21 @@ onBeforeUnmount(() => {
   color: var(--accent);
 }
 
+.theme-option:hover {
+  transform: translateY(-1px);
+}
+
 .check-icon {
-  font-size: 0.88rem;
+  width: 0.88rem;
+  height: 0.88rem;
 }
 
 :global(.settings-popover.el-popper) {
   border-color: var(--border-soft);
-  border-radius: 16px;
-  background: var(--surface);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(250, 244, 233, 0.96), rgba(232, 219, 199, 0.82)),
+    var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
@@ -474,6 +562,21 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
   .settings-button {
     width: 100%;
+  }
+
+  :global(.settings-popover.el-popper) {
+    width: calc(100vw - 24px) !important;
+    max-width: 340px;
+  }
+
+  .setting-line,
+  .setting-line-head,
+  .font-size-control {
+    gap: 10px;
+  }
+
+  .theme-segment {
+    grid-template-columns: 1fr;
   }
 }
 </style>

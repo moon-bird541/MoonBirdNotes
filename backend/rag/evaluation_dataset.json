@@ -1,0 +1,436 @@
+[
+  {
+    "id": "saas-flow-01",
+    "question": "积分校验三步流程分别在什么时候调用？",
+    "categories": ["chinese_semantic", "note", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "1. 接口调用流程 (3-Step Flow)"]],
+    "answerable": true,
+    "expected_keywords": ["launch", "verify", "consume"]
+  },
+  {
+    "id": "saas-launch-02",
+    "question": "页面初始化时应该调用哪个接口，它会返回哪些基础信息？",
+    "categories": ["chinese_semantic", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "2. 接口详情规范"]],
+    "answerable": true,
+    "expected_keywords": ["/api/tool/launch", "user", "tool"]
+  },
+  {
+    "id": "saas-verify-03",
+    "question": "用户点击生成后，verify 接口会不会直接扣积分？",
+    "categories": ["chinese_semantic", "mixed_technical", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "1. 接口调用流程 (3-Step Flow)"]],
+    "answerable": true,
+    "expected_keywords": ["校验", "不执行扣分"]
+  },
+  {
+    "id": "saas-consume-04",
+    "question": "AI 文案生成成功以后通过什么 endpoint 执行实际扣费？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "2. 接口详情规范"]],
+    "answerable": true,
+    "expected_keywords": ["/api/tool/consume", "consumedIntegral"]
+  },
+  {
+    "id": "saas-insufficient-05",
+    "question": "积分不足时校验接口的失败响应会提示什么？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "2. 接口详情规范"]],
+    "answerable": true,
+    "expected_keywords": ["积分不足", "还差"]
+  },
+  {
+    "id": "saas-request-body-06",
+    "question": "launch、verify 和 consume 请求体共同需要哪两个 ID？",
+    "categories": ["mixed_technical", "note", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "2. 接口详情规范"]],
+    "answerable": true,
+    "expected_keywords": ["userId", "toolId"]
+  },
+  {
+    "id": "saas-proxy-file-07",
+    "question": "Vercel 代理层参考代码放在哪个 TypeScript 文件？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "3. 代理层配置 (Vercel Proxy)"]],
+    "answerable": true,
+    "expected_keywords": ["api/proxy.ts"]
+  },
+  {
+    "id": "saas-proxy-cors-08",
+    "question": "代理层为了允许跨域和任意 iframe 嵌入设置了哪些响应头？",
+    "categories": ["chinese_semantic", "mixed_technical", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "3. 代理层配置 (Vercel Proxy)"]],
+    "answerable": true,
+    "expected_keywords": ["Access-Control-Allow-Origin", "frame-ancestors"]
+  },
+  {
+    "id": "saas-proxy-error-09",
+    "question": "proxyRequest 捕获异常后返回的 HTTP 状态码和错误文本是什么？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "3. 代理层配置 (Vercel Proxy)"]],
+    "answerable": true,
+    "expected_keywords": ["500", "代理转发失败"]
+  },
+  {
+    "id": "saas-prompt-merge-10",
+    "question": "Prompt Merging 的最终提示词合成公式是什么？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "4. 参数校验与提示词合成规范 (Prompt Merging)"]],
+    "answerable": true,
+    "expected_keywords": ["内部预设风格", "SaaS 内容主体", "SaaS 补充关键词"]
+  },
+  {
+    "id": "saas-id-filter-11",
+    "question": "前端参数校验必须排除哪两个看起来像空值的字符串？",
+    "categories": ["chinese_semantic", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "4. 参数校验与提示词合成规范 (Prompt Merging)"]],
+    "answerable": true,
+    "expected_keywords": ["null", "undefined"]
+  },
+  {
+    "id": "saas-postmessage-12",
+    "question": "window.postMessage 初始化消息的 type 值和主要字段有哪些？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "5. 无痕传参 (postMessage)"]],
+    "answerable": true,
+    "expected_keywords": ["SAAS_INIT", "userId", "toolId", "context", "prompt"]
+  },
+  {
+    "id": "saas-post-body-13",
+    "question": "SPA iframe 为什么不用 form POST 传初始化数据，而推荐 postMessage？",
+    "categories": ["chinese_semantic", "mixed_technical", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "5. 无痕传参 (postMessage)"]],
+    "answerable": true,
+    "expected_keywords": ["JavaScript", "Body", "postMessage"]
+  },
+  {
+    "id": "saas-reuse-14",
+    "question": "新项目快速复用代理环境时需要拷贝哪两个文件？",
+    "categories": ["chinese_semantic", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "5. 常见问题与复用指南"]],
+    "answerable": true,
+    "expected_keywords": ["api/proxy.ts", "vercel.json"]
+  },
+  {
+    "id": "saas-loose-validation-15",
+    "question": "宽松校验在什么 HTTP 和字段条件下认为后端响应通过？",
+    "categories": ["chinese_semantic", "mixed_technical", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [5],
+    "expected_heading_paths": [["SaaS 接口对接与积分校验规范 (V4-3Step)", "5. 常见问题与复用指南"]],
+    "answerable": true,
+    "expected_keywords": ["200 OK", "success", "valid"]
+  },
+  {
+    "id": "skill-position-16",
+    "question": "Skill Manager 的项目定位是什么，是否依赖云端服务器？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"], "tags": ["开发规范"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["纯本地桌面工具", "不依赖云端服务器"]
+  },
+  {
+    "id": "skill-users-17",
+    "question": "哪些人属于 Skill Manager 的目标用户？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "3. 目标用户"]],
+    "answerable": true,
+    "expected_keywords": ["个人开发者", "AI 工具重度用户", "项目型用户"]
+  },
+  {
+    "id": "skill-stack-18",
+    "question": "Skill Manager 选用的主语言、桌面 UI、数据库和打包工具分别是什么？",
+    "categories": ["mixed_technical", "note", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "4. 技术栈"]],
+    "answerable": true,
+    "expected_keywords": ["Python", "CustomTkinter", "SQLite", "PyInstaller"]
+  },
+  {
+    "id": "skill-sqlite-19",
+    "question": "这个本地工具为什么选择 SQLite 而不是单独安装数据库服务？",
+    "categories": ["chinese_semantic", "mixed_technical", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "4. 技术栈"]],
+    "answerable": true,
+    "expected_keywords": ["不需要安装数据库服务", "离线", ".db"]
+  },
+  {
+    "id": "skill-import-20",
+    "question": "Skill 导入支持哪三种方式？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "5.3 Skill 导入"]],
+    "answerable": true,
+    "expected_keywords": ["文件夹", "ZIP", "Git 仓库"]
+  },
+  {
+    "id": "skill-import-mvp-21",
+    "question": "第一版导入功能为什么可以暂缓 Git clone，优先实现什么？",
+    "categories": ["mixed_technical", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "5.3 Skill 导入"]],
+    "answerable": true,
+    "expected_keywords": ["文件夹导入", "ZIP 导入", "Git"]
+  },
+  {
+    "id": "skill-install-22",
+    "question": "安装一个 Skill 到目标工具目录需要经过哪些检查和记录步骤？",
+    "categories": ["chinese_semantic", "note", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["检查 Skill", "复制", "数据库记录", "安装日志"]
+  },
+  {
+    "id": "skill-enable-23",
+    "question": "第一版启用和禁用 Skill 推荐采用什么目录移动方案？",
+    "categories": ["chinese_semantic", "mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "5.5 Skill 启用 / 禁用"]],
+    "answerable": true,
+    "expected_keywords": ["skills/", "skills_disabled/"]
+  },
+  {
+    "id": "skill-delete-24",
+    "question": "Skill 删除中的“从工具卸载”和“从本地库删除”有什么区别？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "5.6 Skill 删除"]],
+    "answerable": true,
+    "expected_keywords": ["工具目录", "本地管理库", "确认"]
+  },
+  {
+    "id": "skill-backup-25",
+    "question": "备份应包含哪些内容，zip 文件名采用什么格式？",
+    "categories": ["chinese_semantic", "mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["SQLite 数据库", "Skill 文件夹", "skill_manager_backup_YYYYMMDD_HHMMSS.zip"]
+  },
+  {
+    "id": "skill-restore-26",
+    "question": "从备份恢复 Skill Manager 数据的流程是什么？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["校验备份文件", "临时目录", "恢复数据库", "重新扫描"]
+  },
+  {
+    "id": "skill-pages-27",
+    "question": "工具管理页、Skill 管理页和备份恢复页分别提供哪些功能？",
+    "categories": ["chinese_semantic", "note", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "6.2 页面模块"]],
+    "answerable": true,
+    "expected_keywords": ["工具管理页", "Skill 管理页", "备份恢复页"]
+  },
+  {
+    "id": "skill-tables-28",
+    "question": "数据库设计中 tools、skills、skill_installs、settings 和 logs 表各自保存什么？",
+    "categories": ["mixed_technical", "note", "exact_identifier", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["tools", "skills", "skill_installs", "settings", "logs"]
+  },
+  {
+    "id": "skill-layout-29",
+    "question": "统一 Skill 目录结构建议包含哪些配置、文档和 adapters 文件？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["skill.json", "README.md", "prompt.md", "adapters"]
+  },
+  {
+    "id": "skill-adapter-30",
+    "question": "BaseAdapter 要求不同 AI 工具适配器实现哪些方法？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["detect", "get_skill_path", "install_skill", "uninstall_skill"]
+  },
+  {
+    "id": "skill-mvp-31",
+    "question": "MVP 第一版必须完成什么，又明确暂不做什么？",
+    "categories": ["chinese_semantic", "note", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲", "11. MVP 第一版功能范围"]],
+    "answerable": true,
+    "expected_keywords": ["SQLite 初始化", "安装 Skill", "云同步", "多人协作"]
+  },
+  {
+    "id": "skill-stage-install-32",
+    "question": "开发阶段四的目标和交付结果是什么？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["Skill 安装", "复制 Skill 文件夹", "一键安装"]
+  },
+  {
+    "id": "skill-build-33",
+    "question": "用 PyInstaller 打包 Windows 单文件程序的命令和输出 exe 名是什么？",
+    "categories": ["mixed_technical", "note", "exact_identifier"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["pyinstaller", "--noconsole", "--onefile", "SkillManager.exe"]
+  },
+  {
+    "id": "skill-permission-34",
+    "question": "Windows 目录权限问题的建议解决方案有哪些？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["Program Files", "用户目录", "明确提示"]
+  },
+  {
+    "id": "skill-name-conflict-35",
+    "question": "不同来源出现同名 Skill 时应该如何区分和处理安装冲突？",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "acceptable_source_heading_paths": [
+      ["Skill Manager 本地 Skill 管理工具项目大纲"],
+      ["Skill Manager 本地 Skill 管理工具项目大纲", "14.2 Skill 重名问题"]
+    ],
+    "answerable": true,
+    "expected_keywords": ["name + version", "覆盖", "跳过", "重命名"]
+  },
+  {
+    "id": "skill-summary-36",
+    "question": "用一句话概括 Skill Manager 是什么。",
+    "categories": ["chinese_semantic", "note"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [49],
+    "expected_heading_paths": [["Skill Manager 本地 Skill 管理工具项目大纲"]],
+    "answerable": true,
+    "expected_keywords": ["Windows", "本地 Skill 管理工具", "Python"]
+  },
+  {
+    "id": "similar-login-37",
+    "question": "功能说明里是否开放用户注册，谁可以登录？",
+    "categories": ["chinese_semantic", "note", "similar_title"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [2, 3],
+    "expected_heading_paths": [["功能说明"]],
+    "answerable": true,
+    "expected_keywords": ["管理员本人", "不开放用户注册"]
+  },
+  {
+    "id": "similar-markdown-38",
+    "question": "两篇同名功能说明都描述了哪些 Markdown 笔记能力？",
+    "categories": ["chinese_semantic", "mixed_technical", "note", "similar_title", "cross_section"],
+    "filters": {"types": ["note"]},
+    "expected_note_ids": [2, 3],
+    "expected_heading_paths": [["功能说明"]],
+    "answerable": true,
+    "expected_keywords": ["上传", ".md", "展示"]
+  },
+  {
+    "id": "diary-sections-39",
+    "question": "2026 年 7 月 1 日的日记模板包含哪些章节？",
+    "categories": ["chinese_semantic", "diary", "date_mood_weather"],
+    "filters": {"types": ["diary"], "date_from": "2026-07-01", "date_to": "2026-07-01"},
+    "expected_note_ids": [48],
+    "expected_heading_paths": [["2026-07-01 日记"]],
+    "answerable": true,
+    "expected_keywords": ["今日记录", "想法", "明日计划"]
+  },
+  {
+    "id": "diary-mood-40",
+    "question": "2026 年 6 月 30 日记录的心情是什么？",
+    "categories": ["chinese_semantic", "diary", "date_mood_weather", "unanswerable"],
+    "filters": {"types": ["diary"], "date_from": "2026-06-30", "date_to": "2026-06-30"},
+    "expected_note_ids": [36],
+    "expected_heading_paths": [["2026-06-30 日记"]],
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": "diary-weather-41",
+    "question": "2026 年 6 月 29 日的天气如何？",
+    "categories": ["chinese_semantic", "diary", "date_mood_weather", "unanswerable"],
+    "filters": {"types": ["diary"], "date_from": "2026-06-29", "date_to": "2026-06-29"},
+    "expected_note_ids": [37],
+    "expected_heading_paths": [["2026-06-29 日记"]],
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": "unknown-oauth-42",
+    "question": "OAuth2 回调出现 E_AUTH_77 错误应该怎么修复？",
+    "categories": ["mixed_technical", "exact_identifier", "unanswerable"],
+    "filters": {"types": ["note", "diary"]},
+    "expected_note_ids": [],
+    "expected_heading_paths": [],
+    "answerable": false,
+    "expected_keywords": []
+  },
+  {
+    "id": "unknown-payroll-43",
+    "question": "公司 2025 年 12 月工资表里张三的奖金是多少？",
+    "categories": ["chinese_semantic", "unanswerable"],
+    "filters": {"types": ["note", "diary"]},
+    "expected_note_ids": [],
+    "expected_heading_paths": [],
+    "answerable": false,
+    "expected_keywords": []
+  }
+]

@@ -61,6 +61,9 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'accounts.apps.AccountsConfig',
     'notes.apps.NotesConfig',
+    # RAG 数据处理与 Agent 推理分开注册，避免 Agent 直接耦合索引内部实现。
+    'rag.apps.RagConfig',
+    'agent.apps.AgentConfig',
 ]
 
 MIDDLEWARE = [
@@ -130,6 +133,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -151,6 +155,134 @@ REST_FRAMEWORK = {
 CACHE_URL = config('CACHE_URL', default='').strip()
 CACHES = build_cache_config(DEBUG, CACHE_URL)
 
+# Embedding 通过硅基流动在线生成；API Key 只从后端环境读取，不能进入日志或响应。
+SILICONFLOW_API_KEY = config('SILICONFLOW_API_KEY', default='').strip()
+SILICONFLOW_BASE_URL = config(
+    'SILICONFLOW_BASE_URL',
+    default='https://api.siliconflow.cn/v1',
+).rstrip('/')
+RAG_EMBEDDING_PROVIDER = config('RAG_EMBEDDING_PROVIDER', default='siliconflow').strip()
+RAG_EMBEDDING_MODEL = config('RAG_EMBEDDING_MODEL', default='BAAI/bge-m3').strip()
+RAG_EMBEDDING_DIMENSION = config('RAG_EMBEDDING_DIMENSION', default=1024, cast=int)
+RAG_EMBEDDING_VERSION = config(
+    'RAG_EMBEDDING_VERSION',
+    default='siliconflow-bge-m3-input-v1',
+).strip()
+RAG_TOKENIZER_FILE_RAW = config('RAG_TOKENIZER_FILE', default='').strip()
+# 相对路径以 backend 为基准，便于本地使用 Git 忽略的 tokenizer 文件。
+RAG_TOKENIZER_FILE = (
+    str((BASE_DIR / RAG_TOKENIZER_FILE_RAW).resolve())
+    if RAG_TOKENIZER_FILE_RAW and not Path(RAG_TOKENIZER_FILE_RAW).is_absolute()
+    else RAG_TOKENIZER_FILE_RAW
+)
+RAG_EMBEDDING_INPUT_TEMPLATE_VERSION = config(
+    'RAG_EMBEDDING_INPUT_TEMPLATE_VERSION',
+    default='bge-m3-unified-v1',
+).strip()
+RAG_EMBEDDING_NORMALIZE = config('RAG_EMBEDDING_NORMALIZE', default=True, cast=bool)
+RAG_EMBEDDING_BATCH_SIZE = config('RAG_EMBEDDING_BATCH_SIZE', default=32, cast=int)
+RAG_EMBEDDING_TIMEOUT_SECONDS = config('RAG_EMBEDDING_TIMEOUT_SECONDS', default=30.0, cast=float)
+RAG_EMBEDDING_MAX_RETRIES = config('RAG_EMBEDDING_MAX_RETRIES', default=2, cast=int)
+RAG_EMBEDDING_RETRY_BACKOFF_SECONDS = config(
+    'RAG_EMBEDDING_RETRY_BACKOFF_SECONDS',
+    default=0.5,
+    cast=float,
+)
+# 子片段已有 500-token 硬上限；字符上限额外阻止异常查询或误传整篇正文。
+RAG_EMBEDDING_MAX_INPUT_CHARS = config('RAG_EMBEDDING_MAX_INPUT_CHARS', default=32768, cast=int)
+RAG_EMBEDDING_CACHE_TIMEOUT_SECONDS = config(
+    'RAG_EMBEDDING_CACHE_TIMEOUT_SECONDS',
+    default=604800,
+    cast=int,
+)
+RAG_QUERY_EMBEDDING_CACHE_TIMEOUT_SECONDS = config(
+    'RAG_QUERY_EMBEDDING_CACHE_TIMEOUT_SECONDS',
+    default=300,
+    cast=int,
+)
+# 该阈值与 Embedding 模型和输入模板绑定，升级版本后必须用真实评测集重新校准。
+RAG_DENSE_SCORE_THRESHOLD = config('RAG_DENSE_SCORE_THRESHOLD', default=0.50, cast=float)
+
+# Qdrant 只存放可重建向量索引；本机默认使用 Compose 暴露的 REST 端口。
+QDRANT_URL = config('QDRANT_URL', default='http://127.0.0.1:6333').rstrip('/')
+QDRANT_API_KEY = config('QDRANT_API_KEY', default='').strip()
+QDRANT_COLLECTION = config(
+    'QDRANT_COLLECTION',
+    default='moonbird_note_chunks_bge_m3_v1',
+).strip()
+QDRANT_VECTOR_NAME = config('QDRANT_VECTOR_NAME', default='dense').strip()
+QDRANT_VECTOR_SIZE = config('QDRANT_VECTOR_SIZE', default=RAG_EMBEDDING_DIMENSION, cast=int)
+QDRANT_TIMEOUT_SECONDS = config('QDRANT_TIMEOUT_SECONDS', default=10, cast=int)
+
+# 后台索引任务使用数据库时间调度，保存请求本身不等待防抖或外部服务。
+RAG_INDEX_DEBOUNCE_SECONDS = config('RAG_INDEX_DEBOUNCE_SECONDS', default=10, cast=int)
+RAG_INDEX_MAX_ATTEMPTS = config('RAG_INDEX_MAX_ATTEMPTS', default=3, cast=int)
+RAG_INDEX_RETRY_BASE_SECONDS = config('RAG_INDEX_RETRY_BASE_SECONDS', default=5, cast=int)
+RAG_INDEX_LEASE_SECONDS = config('RAG_INDEX_LEASE_SECONDS', default=300, cast=int)
+
+# Knowledge Agent 对话模型与 Embedding 独立配置，避免误用硅基流动 Key 或地址。
+AGENT_LLM_PROVIDER = config('AGENT_LLM_PROVIDER', default='deepseek').strip()
+AGENT_LLM_API_KEY = config('AGENT_LLM_API_KEY', default='').strip()
+AGENT_LLM_BASE_URL = config(
+    'AGENT_LLM_BASE_URL',
+    default='https://api.deepseek.com',
+).rstrip('/')
+AGENT_LLM_MODEL = config('AGENT_LLM_MODEL', default='deepseek-v4-flash').strip()
+AGENT_LLM_TIMEOUT_SECONDS = config('AGENT_LLM_TIMEOUT_SECONDS', default=45.0, cast=float)
+AGENT_LLM_MAX_OUTPUT_TOKENS = config(
+    'AGENT_LLM_MAX_OUTPUT_TOKENS',
+    default=4096,
+    cast=int,
+)
+AGENT_LLM_MAX_RETRIES = config('AGENT_LLM_MAX_RETRIES', default=1, cast=int)
+AGENT_LLM_RETRY_BACKOFF_SECONDS = config(
+    'AGENT_LLM_RETRY_BACKOFF_SECONDS',
+    default=0.5,
+    cast=float,
+)
+AGENT_KNOWLEDGE_MAX_TOOL_STEPS = config(
+    'AGENT_KNOWLEDGE_MAX_TOOL_STEPS',
+    default=4,
+    cast=int,
+)
+AGENT_KNOWLEDGE_TIMEOUT_SECONDS = config(
+    'AGENT_KNOWLEDGE_TIMEOUT_SECONDS',
+    default=90.0,
+    cast=float,
+)
+AGENT_KNOWLEDGE_MAX_INPUT_CHARS = config(
+    'AGENT_KNOWLEDGE_MAX_INPUT_CHARS',
+    default=4000,
+    cast=int,
+)
+AGENT_KNOWLEDGE_MAX_ANSWER_CHARS = config(
+    'AGENT_KNOWLEDGE_MAX_ANSWER_CHARS',
+    default=8000,
+    cast=int,
+)
+# 查询重写只影响检索文本，原始用户问题仍用于最终回答和安全判断。
+AGENT_QUERY_REWRITE_ENABLED = config('AGENT_QUERY_REWRITE_ENABLED', default=True, cast=bool)
+# 历史会话按用户限制总量，并由管理命令清理长期未更新的数据。
+AGENT_CONVERSATION_MAX_PER_USER = config(
+    'AGENT_CONVERSATION_MAX_PER_USER',
+    default=200,
+    cast=int,
+)
+AGENT_CONVERSATION_RETENTION_DAYS = config(
+    'AGENT_CONVERSATION_RETENTION_DAYS',
+    default=180,
+    cast=int,
+)
+AGENT_RUN_TRACE_TTL_SECONDS = config(
+    'AGENT_RUN_TRACE_TTL_SECONDS',
+    default=3600,
+    cast=int,
+)
+AGENT_KNOWLEDGE_CHAT_RATE = config(
+    'AGENT_KNOWLEDGE_CHAT_RATE',
+    default='10/minute',
+).strip()
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -164,6 +296,9 @@ JWT_REFRESH_COOKIE_NAME = 'moonbirdnotes_refresh'
 JWT_COOKIE_PATH = '/'
 JWT_COOKIE_SAMESITE = 'Lax'
 JWT_COOKIE_SECURE = not DEBUG
+
+# The backend is only reachable through the trusted Caddy container in production.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 ADMIN_USERNAME = config('ADMIN_USERNAME')
 ADMIN_PASSWORD = config('ADMIN_PASSWORD')

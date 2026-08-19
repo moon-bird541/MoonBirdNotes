@@ -14,9 +14,19 @@ class TagAdmin(admin.ModelAdmin):
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
     # 管理后台先提供最常用的列表和搜索能力，便于排查上传结果。
-    list_display = ('id', 'title', 'source_filename', 'importance', 'is_pinned', 'is_deleted', 'created_at', 'updated_at')
+    list_display = (
+        'id',
+        'title',
+        'source_filename',
+        'importance',
+        'is_pinned',
+        'is_deleted',
+        'ai_indexing_enabled',
+        'created_at',
+        'updated_at',
+    )
     search_fields = ('title', 'source_filename', 'tags__name')
-    list_filter = ('is_pinned', 'is_deleted', 'tags')
+    list_filter = ('is_pinned', 'is_deleted', 'ai_indexing_enabled', 'tags')
     filter_horizontal = ('tags',)
     readonly_fields = ('created_at', 'updated_at', 'deleted_at')
 

@@ -1,0 +1,5 @@
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"复核共享组件契约、可访问性以及编辑器/API 责任边界。"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"复核偏好兼容、即时事件、折叠选区同步和清理。"}
+{"file":".trellis/spec/frontend/design-system.md","reason":"复核 sticky、缩放/窄屏、视觉 tokens 与焦点状态。"}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"执行构建、真实浏览器 E2E、页面错误守卫和高风险编辑器检查。"}
+{"file":".trellis/tasks/08-16-fixed-editor-toolbar/design.md","reason":"逐项检查实现是否符合最终架构、命令、兼容与回滚约束。"}

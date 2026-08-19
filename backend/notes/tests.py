@@ -14,6 +14,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
 from MoonBirdNotes.media import ProtectedMediaView
+from rag.models import RagIndexDeletionJob
 
 from .models import DiaryEntry, Note, NoteImage, Tag
 from .serializers import (
@@ -1055,6 +1056,8 @@ class TrashNoteBatchDestroyViewTests(TestCase):
         return TrashNoteBatchDestroyView.as_view()(request)
 
     def test_batch_destroys_deleted_notes(self):
+        first_note_id = self.first_note.id
+        second_note_id = self.second_note.id
         response = self._batch_destroy({
             'note_ids': [self.first_note.id, self.second_note.id, self.active_note.id],
         })
@@ -1064,6 +1067,10 @@ class TrashNoteBatchDestroyViewTests(TestCase):
         self.assertFalse(Note.objects.filter(pk=self.first_note.id).exists())
         self.assertFalse(Note.objects.filter(pk=self.second_note.id).exists())
         self.assertTrue(Note.objects.filter(pk=self.active_note.id).exists())
+        self.assertEqual(
+            set(RagIndexDeletionJob.objects.values_list('note_id', flat=True)),
+            {first_note_id, second_note_id},
+        )
 
     def test_rejects_empty_batch_destroy(self):
         response = self._batch_destroy({'note_ids': []})
@@ -1094,7 +1101,6 @@ class TrashPurgeSchedulingTests(TestCase):
             is_deleted=True,
             deleted_at=timezone.now() - timedelta(days=31),
         )
-
         request = self.factory.get('/api/notes/')
         force_authenticate(request, user=self.user)
         response = NoteListView.as_view()(request)
@@ -1110,6 +1116,7 @@ class TrashPurgeSchedulingTests(TestCase):
             is_deleted=True,
             deleted_at=timezone.now() - timedelta(days=31),
         )
+        expired_note_id = expired_note.id
         recent_deleted_note = Note.objects.create(
             title='未过期回收站笔记',
             markdown_content='正文',
@@ -1132,6 +1139,9 @@ class TrashPurgeSchedulingTests(TestCase):
         self.assertFalse(Note.objects.filter(pk=expired_note.pk).exists())
         self.assertTrue(Note.objects.filter(pk=recent_deleted_note.pk).exists())
         self.assertTrue(Note.objects.filter(pk=active_note.pk).exists())
+        self.assertTrue(
+            RagIndexDeletionJob.objects.filter(note_id=expired_note_id).exists()
+        )
 
 
 class NoteListFilterTests(TestCase):

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowRight, CollectionTag, Document, Plus, Reading } from '@element-plus/icons-vue'
+import { Icon } from '@iconify/vue'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
@@ -21,7 +21,9 @@ const summary = ref({
   upload_activity: [],
 })
 
-const HEATMAP_WEEK_COUNT = 5
+const HEATMAP_WEEK_COUNT = 11
+const recentIconNames = ['ph:tag', 'ph:article', 'ph:book-open', 'ph:code', 'ph:pencil-line']
+const recentToneNames = ['green', 'paper', 'gold', 'blue', 'violet']
 
 const currentUser = computed(() => {
   const raw = localStorage.getItem('current_user')
@@ -73,6 +75,10 @@ const goToNotes = () => {
   router.push('/notes')
 }
 
+const goToTags = () => {
+  router.push('/tags')
+}
+
 const goToDetail = (note) => {
   router.push({ name: 'note-detail', params: { id: note.id } })
 }
@@ -117,6 +123,12 @@ const formatDateTime = (value) => {
     minute: '2-digit',
   }).format(new Date(value))
 }
+
+const formatRecentDateTime = (value) => formatDateTime(value).replace(/\s+/, '\n')
+
+const resolveRecentIcon = (index) => recentIconNames[index % recentIconNames.length]
+
+const resolveRecentTone = (index) => recentToneNames[index % recentToneNames.length]
 
 const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
@@ -190,46 +202,50 @@ onMounted(() => {
       <section v-loading="summaryLoading" class="home-stage">
         <header class="home-topbar fade-rise-enter">
           <div>
-            <p class="home-brand">MoonBirdNotes</p>
-            <h1>个人知识库工作台</h1>
+            <h1>
+              今日的书桌
+              <Icon class="title-sun" icon="ph:sun" />
+            </h1>
             <p class="home-subtitle">
-              欢迎回来，{{ currentUser?.username || '管理员' }}。这里汇总当前笔记规模、标签结构和最近更新。
+              欢迎回来，<span>{{ currentUser?.username || 'moodbird' }}</span>。先看 5 篇新东西。
             </p>
           </div>
 
           <div class="home-actions">
-            <el-button class="cta-button" type="primary" size="large" :icon="Plus" @click="createNewNote" :loading="creating">
+            <el-button class="cta-button" type="primary" size="large" @click="createNewNote" :loading="creating">
+              <Icon icon="ph:plus" />
               创建笔记
             </el-button>
-            <el-button class="cta-button-secondary" size="large" :icon="ArrowRight" @click="goToNotes">
+            <el-button class="cta-button-secondary" size="large" @click="goToNotes">
               查看全部
+              <Icon icon="ph:arrow-right" />
             </el-button>
           </div>
         </header>
 
         <section class="overview-board fade-rise-enter-delay" aria-label="笔记统计">
-          <div class="overview-copy">
-            <p class="home-kicker">Overview</p>
-            <h2>知识库概览</h2>
+          <div class="panel-title">
+            <span class="panel-title-icon"><Icon icon="ph:book-bookmark" /></span>
+            <h2>桌面数字</h2>
           </div>
 
           <div class="metric-rail">
             <article class="metric-item">
-              <span class="metric-icon"><el-icon><Document /></el-icon></span>
+              <span class="metric-icon"><Icon icon="ph:notebook" /></span>
               <span>
                 <small>笔记总数</small>
                 <strong>{{ formatNumber(stats.note_count) }}</strong>
               </span>
             </article>
             <article class="metric-item">
-              <span class="metric-icon"><el-icon><Reading /></el-icon></span>
+              <span class="metric-icon"><Icon icon="ph:text-aa" /></span>
               <span>
                 <small>累计字数</small>
                 <strong>{{ formatNumber(stats.word_count) }}</strong>
               </span>
             </article>
             <article class="metric-item">
-              <span class="metric-icon"><el-icon><CollectionTag /></el-icon></span>
+              <span class="metric-icon"><Icon icon="ph:tag" /></span>
               <span>
                 <small>活跃标签</small>
                 <strong>{{ formatNumber(stats.tag_count) }}</strong>
@@ -240,8 +256,8 @@ onMounted(() => {
 
         <section class="activity-board fade-rise-enter-delay-2" aria-label="笔记上传热力图">
           <div class="activity-head">
-            <div>
-              <p class="home-kicker">Activity</p>
+            <div class="panel-title">
+              <span class="panel-title-icon"><Icon icon="ph:flame" /></span>
               <h2>上传热力图</h2>
             </div>
             <span>{{ totalActivityCount }} 篇 / 近一个月</span>
@@ -276,14 +292,17 @@ onMounted(() => {
 
             <div class="activity-summary" aria-label="近一个月上传摘要">
               <div class="activity-summary-item">
+                <span class="summary-icon is-green"><Icon icon="ph:calendar-check" /></span>
                 <span>活跃天数</span>
                 <strong>{{ activeActivityDays }}</strong>
               </div>
               <div class="activity-summary-item">
+                <span class="summary-icon is-gold"><Icon icon="ph:star" /></span>
                 <span>最高单日</span>
                 <strong>{{ maxActivityCount }}</strong>
               </div>
               <div class="activity-summary-item">
+                <span class="summary-icon is-blue"><Icon icon="ph:cloud-arrow-up" /></span>
                 <span>日均上传</span>
                 <strong>{{ averageActivityCount }}</strong>
               </div>
@@ -294,30 +313,37 @@ onMounted(() => {
         <section class="workspace-board fade-rise-enter-delay-2">
           <div class="recent-panel">
             <div class="panel-head">
-              <div>
-                <p class="home-kicker">Recent Notes</p>
+              <div class="panel-title">
+                <span class="panel-title-icon"><Icon icon="ph:book-open-text" /></span>
                 <h2>最近 5 篇</h2>
               </div>
               <button class="text-action" type="button" @click="goToNotes">
                 全部笔记
-                <el-icon><ArrowRight /></el-icon>
+                <Icon icon="ph:arrow-right" />
               </button>
             </div>
 
             <div v-if="recentNotes.length" class="recent-list">
               <button
-                v-for="note in recentNotes"
+                v-for="(note, index) in recentNotes"
                 :key="note.id"
                 class="recent-item"
                 type="button"
                 @click="goToDetail(note)"
               >
-                <span class="recent-date">{{ formatDateTime(note.updated_at || note.created_at) }}</span>
+                <span class="recent-date">{{ formatRecentDateTime(note.updated_at || note.created_at) }}</span>
+                <span class="recent-note-icon" :class="`is-${resolveRecentTone(index)}`">
+                  <Icon :icon="resolveRecentIcon(index)" />
+                </span>
                 <span class="recent-copy">
                   <strong>{{ note.title }}</strong>
                   <small>{{ note.excerpt }}</small>
                 </span>
-                <span class="recent-meta">{{ formatWordCount(note.word_count) }}</span>
+                <span class="recent-meta">
+                  <span>{{ formatWordCount(note.word_count) }}</span>
+                  <Icon icon="ph:bell-simple" />
+                  <Icon icon="ph:dots-three" />
+                </span>
               </button>
             </div>
 
@@ -329,8 +355,8 @@ onMounted(() => {
 
           <aside class="tag-panel">
             <div class="panel-head">
-              <div>
-                <p class="home-kicker">Tags</p>
+              <div class="panel-title">
+                <span class="panel-title-icon"><Icon icon="ph:tag" /></span>
                 <h2>标签分布</h2>
               </div>
             </div>
@@ -351,6 +377,11 @@ onMounted(() => {
               <strong>暂无标签数据</strong>
               <p>添加标签后会显示分布情况。</p>
             </div>
+
+            <button class="tag-footer-action" type="button" @click="goToTags">
+              查看全部标签
+              <Icon icon="ph:arrow-right" />
+            </button>
           </aside>
         </section>
       </section>
@@ -363,7 +394,7 @@ onMounted(() => {
   min-height: 100vh;
   min-height: 100svh;
   padding: 0 18px 28px;
-  background: #f8fafc;
+  background: transparent;
 }
 
 .home-stage {
@@ -375,8 +406,8 @@ onMounted(() => {
   grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
   gap: 16px 18px;
   align-items: start;
-  width: min(100%, 1260px);
-  margin: 0 auto;
+  width: min(100%, 1280px);
+  margin: 0 auto 0 clamp(0px, 2.8vw, 34px);
   padding-top: 24px;
 }
 
@@ -396,7 +427,7 @@ onMounted(() => {
 .home-brand,
 .home-kicker {
   margin: 0 0 7px;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -428,21 +459,24 @@ onMounted(() => {
 
 .cta-button,
 .cta-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 38px;
   padding-inline: 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-weight: 700;
 }
 
 .cta-button {
   border: none;
-  background: #1d4ed8;
+  background: var(--brand-blue);
   box-shadow: none;
 }
 
 .cta-button-secondary {
-  border: 1px solid #dbe3ef;
-  background: #ffffff;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
   color: var(--brand-navy);
 }
 
@@ -456,10 +490,12 @@ onMounted(() => {
   margin-top: 0;
   padding: 20px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: none;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(160deg, rgba(250, 244, 233, 0.92), rgba(232, 219, 199, 0.7)),
+    var(--surface);
+  box-shadow: var(--shadow-subtle);
 }
 
 .overview-board::after {
@@ -469,7 +505,7 @@ onMounted(() => {
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: #2563eb;
+  background: var(--brand-gold);
   content: '';
   pointer-events: none;
 }
@@ -485,13 +521,15 @@ onMounted(() => {
 .activity-board {
   grid-area: activity;
   min-width: 0;
-  margin-top: 0;
+  margin-top: 14px;
   padding: 18px 20px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: none;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(248, 240, 226, 0.9), rgba(237, 225, 206, 0.72)),
+    var(--surface);
+  box-shadow: var(--shadow-subtle);
 }
 
 .activity-head {
@@ -500,7 +538,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 11px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .activity-head h2 {
@@ -617,9 +655,9 @@ onMounted(() => {
   align-self: stretch;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #f8fafc;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(246, 237, 222, 0.68);
 }
 
 .activity-summary-item {
@@ -631,11 +669,11 @@ onMounted(() => {
 }
 
 .activity-summary-item + .activity-summary-item {
-  border-left: 1px solid #e2e8f0;
+  border-left: 1px solid var(--border-soft);
 }
 
 .activity-summary-item span {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -654,7 +692,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr;
   min-width: 0;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border-soft);
 }
 
 .metric-item {
@@ -669,7 +707,7 @@ onMounted(() => {
 }
 
 .metric-item + .metric-item {
-  border-top: 1px solid #edf2f7;
+  border-top: 1px solid var(--border-soft);
 }
 
 .metric-icon {
@@ -679,10 +717,15 @@ onMounted(() => {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border: 1px solid #dbeafe;
-  border-radius: 10px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--brand-blue);
+}
+
+.metric-icon svg {
+  width: 1.08rem;
+  height: 1.08rem;
 }
 
 .metric-item span:last-child {
@@ -722,10 +765,12 @@ onMounted(() => {
 .tag-panel {
   min-width: 0;
   padding: 20px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: none;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(250, 244, 233, 0.9), rgba(238, 226, 207, 0.68)),
+    var(--surface);
+  box-shadow: var(--shadow-subtle);
 }
 
 .recent-panel {
@@ -742,7 +787,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .panel-head h2 {
@@ -760,14 +805,17 @@ onMounted(() => {
   padding: 0;
   border: none;
   background: transparent;
-  color: #1d4ed8;
+  color: var(--brand-blue);
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition:
+    opacity 0.2s var(--motion-calm),
+    transform 0.2s var(--motion-snappy);
 }
 
 .text-action:hover {
   opacity: 0.72;
+  transform: translateX(2px);
 }
 
 .recent-list {
@@ -784,15 +832,15 @@ onMounted(() => {
   margin-inline: 0;
   padding: 15px 0;
   border: none;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--border-soft);
   border-radius: 0;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
   transition:
-    background 0.2s ease,
-    padding 0.2s ease;
+    background 0.2s var(--motion-calm),
+    padding 0.2s var(--motion-snappy);
 }
 
 .recent-item:hover {
@@ -870,13 +918,14 @@ onMounted(() => {
   overflow: hidden;
   border-radius: 999px;
   background: #edf2f7;
+  background: var(--surface-muted);
 }
 
 .tag-track span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #2563eb;
+  background: var(--moss);
   box-shadow: none;
 }
 
@@ -922,7 +971,7 @@ onMounted(() => {
 
   .metric-item + .metric-item {
     border-top: none;
-    border-left: 1px solid #edf2f7;
+    border-left: 1px solid var(--border-soft);
   }
 
   .activity-body {
@@ -962,7 +1011,7 @@ onMounted(() => {
   }
 
   .metric-item + .metric-item {
-    border-top: 1px solid #edf2f7;
+    border-top: 1px solid var(--border-soft);
     border-left: none;
   }
 }
@@ -996,7 +1045,7 @@ onMounted(() => {
   }
 
   .activity-summary-item + .activity-summary-item {
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border-soft);
     border-left: none;
   }
 
@@ -1012,6 +1061,505 @@ onMounted(() => {
 
   .recent-meta {
     justify-self: start;
+  }
+}
+
+/* Screenshot-matched desk dashboard */
+.home-page {
+  padding: 0;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(219, 188, 139, 0.13), transparent 26%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.82), rgba(250, 244, 235, 0.72));
+}
+
+.home-stage {
+  grid-template-areas:
+    'top top'
+    'overview activity'
+    'tags recent';
+  grid-template-columns: 368px minmax(0, 1fr);
+  gap: 20px 30px;
+  /* 同一网格行的左右面板必须等高，避免四个主区域边线错位。 */
+  align-items: stretch;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 52px 48px 48px 58px;
+}
+
+.home-topbar {
+  align-items: flex-start;
+  padding: 0 0 14px;
+}
+
+.home-topbar h1 {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: clamp(2rem, 2.4vw, 2.45rem);
+  font-weight: 850;
+  line-height: 1.08;
+}
+
+.title-sun {
+  width: 30px;
+  height: 30px;
+  color: #d49b3f;
+}
+
+.home-subtitle {
+  margin-top: 12px;
+  color: #7c746a;
+  font-size: 1rem;
+}
+
+.home-subtitle span {
+  color: var(--brand-blue);
+  font-weight: 750;
+}
+
+.home-actions {
+  gap: 18px;
+  padding-top: 8px;
+}
+
+.home-actions :deep(.el-button) {
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 24px;
+  border-radius: 10px;
+  font-size: 0.96rem;
+}
+
+.cta-button {
+  background: linear-gradient(180deg, #b96949, #9f432a);
+  box-shadow: 0 12px 20px rgba(150, 70, 38, 0.16);
+}
+
+.cta-button-secondary {
+  border-color: rgba(123, 83, 58, 0.16);
+  background: rgba(255, 250, 241, 0.78);
+}
+
+.overview-board,
+.activity-board,
+.recent-panel,
+.tag-panel {
+  height: 100%;
+  border: 1px solid rgba(123, 83, 58, 0.13);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(255, 248, 239, 0.86)),
+    var(--surface);
+  box-shadow:
+    0 18px 42px rgba(99, 69, 43, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.overview-board,
+.tag-panel {
+  padding: 24px;
+}
+
+.activity-board,
+.recent-panel {
+  padding: 24px 26px;
+}
+
+.activity-board {
+  margin-top: 0;
+}
+
+.overview-board::after {
+  display: none;
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.panel-title h2,
+.activity-head h2,
+.panel-head h2 {
+  margin: 0;
+  color: #2e302d;
+  font-size: 1.16rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.panel-title-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--brand-blue);
+}
+
+.panel-title-icon svg {
+  width: 1.08rem;
+  height: 1.08rem;
+}
+
+.metric-rail,
+.panel-head,
+.activity-head {
+  border-color: rgba(123, 83, 58, 0.14);
+}
+
+.metric-rail {
+  margin-top: 14px;
+}
+
+.metric-item {
+  min-height: 82px;
+  gap: 22px;
+  padding: 16px 0;
+}
+
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-color: rgba(171, 91, 58, 0.14);
+  border-radius: 10px;
+  background: #fbefe6;
+  color: var(--brand-blue);
+}
+
+.metric-icon svg {
+  width: 1.24rem;
+  height: 1.24rem;
+}
+
+.metric-item small {
+  margin-bottom: 8px;
+  color: #7e746a;
+  font-size: 0.88rem;
+}
+
+.metric-item strong {
+  color: #2d2e2b;
+  font-size: 1.58rem;
+  font-weight: 850;
+}
+
+.activity-head {
+  padding-bottom: 16px;
+}
+
+.activity-head > span {
+  color: #6f675e;
+  font-size: 0.92rem;
+}
+
+.activity-body {
+  grid-template-columns: minmax(230px, 286px) minmax(0, 1fr);
+  gap: 52px;
+  align-items: center;
+  padding-top: 20px;
+}
+
+.activity-heatmap {
+  grid-auto-columns: 16px;
+  gap: 5px;
+}
+
+.activity-week {
+  grid-template-rows: repeat(7, 16px);
+  gap: 5px;
+}
+
+.activity-day,
+.activity-legend i {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(91, 119, 78, 0.18);
+  border-radius: 4px;
+  background: rgba(246, 248, 239, 0.88);
+  box-shadow: none;
+}
+
+.activity-day.is-level-1,
+.activity-legend i.is-level-1 {
+  background: #dfead7;
+}
+
+.activity-day.is-level-2,
+.activity-legend i.is-level-2 {
+  background: #c7ddb9;
+}
+
+.activity-day.is-level-3,
+.activity-legend i.is-level-3 {
+  background: #8fb678;
+}
+
+.activity-day.is-level-4,
+.activity-legend i.is-level-4 {
+  background: #2f743e;
+}
+
+.activity-legend {
+  margin-top: 14px;
+  color: #6f675e;
+  font-size: 0.78rem;
+}
+
+.activity-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.activity-summary-item {
+  justify-items: center;
+  gap: 10px;
+  min-height: 170px;
+  padding: 18px 20px;
+  text-align: center;
+}
+
+.activity-summary-item + .activity-summary-item {
+  border-left: 1px solid rgba(123, 83, 58, 0.14);
+}
+
+.summary-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+}
+
+.summary-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.summary-icon.is-green {
+  background: rgba(91, 119, 78, 0.12);
+  color: #637b59;
+}
+
+.summary-icon.is-gold {
+  background: rgba(218, 160, 64, 0.13);
+  color: #d49b3f;
+}
+
+.summary-icon.is-blue {
+  background: rgba(74, 136, 188, 0.12);
+  color: #4d8fca;
+}
+
+.activity-summary-item > span:not(.summary-icon) {
+  color: #756d64;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.activity-summary-item strong {
+  color: #2b2b29;
+  font-size: clamp(2.05rem, 3vw, 2.55rem);
+  font-weight: 850;
+}
+
+.tag-list {
+  align-content: center;
+  gap: 28px;
+  min-height: 0;
+  padding: 16px 0;
+}
+
+.tag-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.tag-label {
+  font-size: 0.94rem;
+}
+
+.tag-label strong {
+  color: #756d64;
+  font-weight: 600;
+}
+
+.tag-track {
+  height: 5px;
+  background: rgba(232, 223, 211, 0.86);
+}
+
+.tag-track span {
+  background: #60775c;
+}
+
+.tag-footer-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border: 1px solid rgba(123, 83, 58, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 250, 241, 0.74);
+  color: var(--brand-blue);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.recent-panel {
+  min-height: 421px;
+}
+
+.recent-list {
+  padding-top: 0;
+}
+
+.recent-item {
+  grid-template-columns: 50px 42px minmax(0, 1fr) 150px;
+  gap: 14px;
+  min-height: 62px;
+  padding: 11px 0;
+}
+
+.recent-date {
+  color: #7a7268;
+  font-size: 0.82rem;
+  line-height: 1.28;
+  white-space: pre-line;
+}
+
+.recent-note-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(123, 83, 58, 0.1);
+  border-radius: 8px;
+}
+
+.recent-note-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.recent-note-icon.is-green {
+  background: #edf5e9;
+  color: #60775c;
+}
+
+.recent-note-icon.is-paper {
+  background: #fbefe6;
+  color: var(--brand-blue);
+}
+
+.recent-note-icon.is-gold {
+  background: #fff5de;
+  color: #d49b3f;
+}
+
+.recent-note-icon.is-blue {
+  background: #eef5fb;
+  color: #4d8fca;
+}
+
+.recent-note-icon.is-violet {
+  background: #f1e9f7;
+  color: #8b61af;
+}
+
+.recent-copy strong {
+  color: #2d2e2b;
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.recent-copy small {
+  color: #756d64;
+  font-size: 0.82rem;
+}
+
+.recent-meta {
+  display: grid;
+  grid-template-columns: 1fr 22px 22px;
+  gap: 13px;
+  align-items: center;
+  justify-self: stretch;
+  color: #756d64;
+}
+
+.recent-meta svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--brand-blue);
+}
+
+.recent-meta svg:last-child {
+  color: #756d64;
+}
+
+@media (max-width: 1280px) {
+  .home-stage {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    padding-inline: 32px;
+  }
+
+  .activity-body {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 980px) {
+  .home-stage {
+    grid-template-areas:
+      'top'
+      'overview'
+      'activity'
+      'tags'
+      'recent';
+    grid-template-columns: 1fr;
+    padding: 24px 16px;
+  }
+
+  .activity-summary-item {
+    min-height: 128px;
+  }
+
+  .overview-board,
+  .activity-board,
+  .recent-panel,
+  .tag-panel {
+    height: auto;
+  }
+
+  .tag-list {
+    gap: 15px;
+    padding-block: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .recent-item {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
+
+  .recent-date,
+  .recent-meta {
+    grid-column: 1 / -1;
+  }
+
+  .recent-meta {
+    grid-template-columns: auto 22px 22px;
+    justify-content: start;
   }
 }
 </style>

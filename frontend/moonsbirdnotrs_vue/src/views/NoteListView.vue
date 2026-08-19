@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Close, CollectionTag, Delete, Download, EditPen, MoreFilled, Search, Star, StarFilled, View } from '@element-plus/icons-vue'
+import { Icon } from '@iconify/vue'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
@@ -37,7 +38,7 @@ const batchTagMode = ref('add')
 const batchTagNames = ref([])
 const pinningNoteId = ref(null)
 const updatingImportanceNoteId = ref(null)
-const importanceRateColors = ['var(--brand-blue)', 'var(--brand-blue)', 'var(--brand-blue)']
+const importanceRateColors = ['var(--brand-gold)', 'var(--moss)', 'var(--brand-blue)']
 const sortOptions = [
   { label: '置顶优先 · 最新创建', value: 'pinned_created' },
   { label: '置顶优先 · 最近更新', value: 'pinned_updated' },
@@ -50,12 +51,12 @@ const batchTagModeOptions = [
   { label: '替换标签', value: 'replace' },
 ]
 // const bookPalettes = [
-//   ['#2251d1', '#60a5fa'],
-//   ['#2563eb', '#7dd3fc'],
-//   ['#0ea5e9', '#67e8f9'],
-//   ['#0f766e', '#5eead4'],
-//   ['#475569', '#94a3b8'],
-//   ['#1d4ed8', '#38bdf8'],
+//   ['#8f3f23', '#d39a62'],
+//   ['#4d6144', '#9faf81'],
+//   ['#7b4d2a', '#b38432'],
+//   ['#3f4f4b', '#8ba39a'],
+//   ['#5d554b', '#b8aa93'],
+//   ['#9e2f22', '#d9856c'],
 // ]
 // const BOOKCASE_CAPACITY = 20
 // const BOOKCASE_ROW_SIZE = 5
@@ -173,7 +174,7 @@ const fetchNotes = async (page = 1) => {
     total.value = data.count
     currentPage.value = page
   } catch (error) {
-    const detail = error.response?.data?.detail || '获取笔记列表失败，请稍后重试。'
+    const detail = error.response?.data?.detail || '列表没拿到。再试一次。'
     ElMessage.error(detail)
   } finally {
     loading.value = false
@@ -185,7 +186,7 @@ const fetchTags = async () => {
     const { data } = await api.get('/notes/tags/')
     tags.value = data
   } catch (error) {
-    const detail = error.response?.data?.detail || '获取标签列表失败，请稍后重试。'
+    const detail = error.response?.data?.detail || '标签没拿到。再试一次。'
     ElMessage.error(detail)
   }
 }
@@ -469,7 +470,7 @@ const updateNoteImportance = async (note, value) => {
     }
     ElMessage.success('重要程度已更新。')
   } catch (error) {
-    const detail = error.response?.data?.detail || error.response?.data?.importance?.[0] || '更新重要程度失败，请稍后重试。'
+    const detail = error.response?.data?.detail || error.response?.data?.importance?.[0] || '重要度没改成。'
     ElMessage.error(detail)
     fetchNotes(currentPage.value)
   } finally {
@@ -686,14 +687,19 @@ onBeforeUnmount(() => {
         <header class="notes-header fade-rise-enter">
           <div class="header-copy">
             <p class="notes-brand">MoonBirdNotes</p>
-            <h1>笔记列表</h1>
+            <h1>笔记摊开</h1>
             <p class="notes-subtitle">
-              按创建时间倒序浏览最近新建的笔记，优先看到最新上传的内容。
+              最近的在上面。
+              <br />
+              乱了就搜。
             </p>
           </div>
 
           <div class="notes-actions">
-            <el-button class="upload-button" type="primary" @click="goToUpload">上传笔记</el-button>
+            <el-button class="upload-button" type="primary" @click="goToUpload">
+              <Icon icon="ph:upload-simple" />
+              上传笔记
+            </el-button>
           </div>
         </header>
 
@@ -749,7 +755,7 @@ onBeforeUnmount(() => {
               v-model="searchKeyword"
               class="search-input"
               clearable
-              placeholder="搜索标题、正文、标签或文件名"
+              placeholder="搜标题、正文、标签"
               @clear="clearSearch"
             >
               <template #prefix>
@@ -807,7 +813,7 @@ onBeforeUnmount(() => {
               >
                 本页全选
               </el-checkbox>
-              <span>{{ selectedCount ? `已选 ${selectedCount} 篇` : '选择要移入回收站的笔记' }}</span>
+                <span>{{ selectedCount ? `已选 ${selectedCount} 篇` : '选择要处理的笔记' }}</span>
             </div>
 
             <div class="batch-actions">
@@ -1141,7 +1147,7 @@ onBeforeUnmount(() => {
                 {{
                   hasActiveFilters
                     ? '没有找到符合当前筛选条件的笔记。'
-                    : '当前还没有笔记，先上传一篇 Markdown 笔记吧。'
+                    : '这里空着。先丢一篇 .md 进来。'
                 }}
               </p>
               <el-button
@@ -1150,7 +1156,7 @@ onBeforeUnmount(() => {
                 type="primary"
                 @click="clearFilters"
               >
-                清空筛选
+                清掉筛选
               </el-button>
               <el-button v-else class="empty-action" type="primary" @click="goToUpload">去上传</el-button>
             </div>
@@ -1296,6 +1302,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .notes-page {
   padding: 20px;
+  background: transparent;
 }
 
 .notes-stage {
@@ -1319,7 +1326,7 @@ onBeforeUnmount(() => {
   color: var(--brand-blue);
   font-size: 0.84rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1328,17 +1335,20 @@ onBeforeUnmount(() => {
   color: var(--brand-navy);
   font-size: clamp(2.4rem, 4vw, 4.8rem);
   line-height: 0.98;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .notes-subtitle {
   max-width: 560px;
   margin: 18px 0 0;
   color: var(--ink-soft);
-  line-height: 1.9;
+  line-height: 1.8;
 }
 
 .upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 50px;
   padding-inline: 24px;
   border: none;
@@ -1350,11 +1360,11 @@ onBeforeUnmount(() => {
 .notes-board {
   margin-top: 34px;
   padding: 30px 30px 24px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 30px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.64)),
-    rgba(255, 255, 255, 0.68);
+    linear-gradient(160deg, rgba(250, 244, 233, 0.92), rgba(232, 219, 199, 0.68)),
+    var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
@@ -1370,7 +1380,7 @@ onBeforeUnmount(() => {
   color: var(--brand-navy);
   font-size: 1.9rem;
   line-height: 1.04;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
 }
 
 .board-summary {
@@ -1385,23 +1395,23 @@ onBeforeUnmount(() => {
   min-height: 36px;
   margin-left: 2px;
   padding-inline: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(250, 244, 233, 0.82);
   color: var(--brand-navy);
   font-weight: 800;
 }
 
 .batch-mode-toggle:hover,
 .batch-mode-toggle:focus {
-  border-color: rgba(220, 38, 38, 0.28);
-  background: rgba(220, 38, 38, 0.07);
-  color: #dc2626;
+  border-color: rgba(158, 47, 34, 0.28);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .batch-mode-toggle.is-active {
-  border-color: rgba(37, 99, 235, 0.24);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
   color: var(--brand-blue);
 }
 
@@ -1455,24 +1465,24 @@ onBeforeUnmount(() => {
   align-items: center;
   margin-top: 22px;
   padding: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(250, 244, 233, 0.72);
 }
 
 .search-input :deep(.el-input__wrapper),
 .tag-filter-select :deep(.el-select__wrapper),
 .sort-select :deep(.el-select__wrapper) {
   min-height: 46px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-md);
+  background: rgba(255, 249, 239, 0.86);
   box-shadow: none;
 }
 
 .search-input :deep(.el-input__wrapper.is-focus),
 .tag-filter-select :deep(.el-select__wrapper.is-focused),
 .sort-select :deep(.el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.26);
+  box-shadow: 0 0 0 1px var(--accent-border);
 }
 
 .tag-filter-select,
@@ -1482,8 +1492,8 @@ onBeforeUnmount(() => {
 
 .clear-search-button {
   min-height: 46px;
-  border-color: rgba(148, 163, 184, 0.24);
-  border-radius: 14px;
+  border-color: var(--border-soft);
+  border-radius: var(--radius-md);
   color: var(--brand-navy);
 }
 
@@ -1498,11 +1508,11 @@ onBeforeUnmount(() => {
   gap: 14px;
   margin-top: 14px;
   padding: 12px 14px;
-  border: 1px solid rgba(37, 99, 235, 0.16);
-  border-radius: 18px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.78)),
-    rgba(255, 255, 255, 0.78);
+    linear-gradient(180deg, rgba(250, 244, 233, 0.92), rgba(232, 219, 199, 0.72)),
+    var(--surface);
 }
 
 .batch-selection-info,
@@ -1523,18 +1533,18 @@ onBeforeUnmount(() => {
 .batch-export-button,
 .batch-delete-button {
   min-height: 40px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .batch-clear-button {
-  border-color: rgba(148, 163, 184, 0.24);
+  border-color: var(--border-soft);
   color: var(--brand-navy);
 }
 
 .batch-tag-button,
 .batch-export-button {
-  border-color: rgba(37, 99, 235, 0.2);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
   color: var(--brand-blue);
   font-weight: 800;
 }
@@ -1543,8 +1553,8 @@ onBeforeUnmount(() => {
 .batch-tag-button:focus,
 .batch-export-button:hover,
 .batch-export-button:focus {
-  border-color: rgba(37, 99, 235, 0.32);
-  background: rgba(37, 99, 235, 0.12);
+  border-color: var(--brand-blue);
+  background: color-mix(in srgb, var(--brand-blue) 14%, transparent);
   color: var(--brand-blue);
 }
 
@@ -2013,12 +2023,13 @@ onBeforeUnmount(() => {
   gap: 28px;
   align-items: start;
   padding: 24px 6px;
-  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-top: 1px solid var(--border-soft);
   transition:
-    background-color 0.18s ease,
-    box-shadow 0.18s ease,
-    padding 0.18s ease,
-    border-radius 0.18s ease;
+    background-color 0.18s var(--motion-calm),
+    box-shadow 0.18s var(--motion-calm),
+    padding 0.18s var(--motion-snappy),
+    border-radius 0.18s var(--motion-calm),
+    transform 0.18s var(--motion-snappy);
 }
 
 .note-row.is-batch-mode {
@@ -2030,20 +2041,21 @@ onBeforeUnmount(() => {
 }
 
 .note-row.is-batch-mode:hover {
-  background: rgba(37, 99, 235, 0.04);
+  background: var(--accent-soft);
+  transform: translateX(2px);
 }
 
 .note-row.is-pinned {
   background:
-    linear-gradient(90deg, var(--accent-soft), rgba(255, 255, 255, 0) 46%);
+    linear-gradient(90deg, var(--accent-soft), rgba(250, 244, 233, 0) 46%);
   box-shadow: inset 3px 0 0 var(--brand-blue);
 }
 
 .note-row.is-selected {
   background:
-    linear-gradient(180deg, rgba(239, 246, 255, 0.78), rgba(255, 255, 255, 0.72)),
-    rgba(255, 255, 255, 0.76);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.16);
+    linear-gradient(180deg, rgba(250, 244, 233, 0.78), rgba(232, 219, 199, 0.72)),
+    var(--surface);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 
 .note-row:first-child {
@@ -2060,7 +2072,7 @@ onBeforeUnmount(() => {
   color: var(--brand-navy);
   font-size: clamp(1.3rem, 2vw, 2rem);
   line-height: 1.18;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .note-select-cell {
@@ -2096,7 +2108,7 @@ onBeforeUnmount(() => {
 
 .note-main h3,
 .note-main .note-excerpt {
-  transition: color 0.2s ease;
+  transition: color 0.2s var(--motion-calm);
 }
 
 .note-main:hover h3 {
@@ -2139,8 +2151,8 @@ onBeforeUnmount(() => {
   align-items: center;
   min-height: 26px;
   padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
+  border-radius: var(--radius-md);
+  background: var(--moss-soft);
   color: var(--brand-blue);
   font-size: 0.82rem;
   font-weight: 600;
@@ -2219,21 +2231,21 @@ onBeforeUnmount(() => {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(250, 244, 233, 0.9);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    transform 0.2s var(--motion-snappy),
+    box-shadow 0.2s var(--motion-calm),
+    border-color 0.2s var(--motion-calm);
 }
 
 .more-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.24);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  border-color: var(--accent-border);
+  box-shadow: 0 10px 24px rgba(42, 33, 23, 0.08);
 }
 
 .empty-state {
@@ -2718,13 +2730,13 @@ onBeforeUnmount(() => {
 
 .beautiful-dropdown .dropdown-item-with-icon .el-icon {
   font-size: 16px !important;
-  color: #2563eb !important;
-  transition: all 0.2s ease !important;
+  color: var(--brand-blue) !important;
+  transition: all 0.2s var(--motion-calm) !important;
 }
 
 .beautiful-dropdown .el-dropdown-menu__item:hover {
-  background: rgba(37, 99, 235, 0.08) !important;
-  color: #2563eb !important;
+  background: var(--accent-soft) !important;
+  color: var(--brand-blue) !important;
 }
 
 .beautiful-dropdown .dropdown-item-danger {

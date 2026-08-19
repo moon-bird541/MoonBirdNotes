@@ -54,6 +54,9 @@ class Note(models.Model):
     # 软删除标记：进入回收站时置为 True，普通列表只展示 False 的数据。
     is_deleted = models.BooleanField(default=False)
 
+    # 默认允许普通笔记和日记参与 AI 索引；仍可逐篇关闭以阻止后续云端向量化。
+    ai_indexing_enabled = models.BooleanField(default=True)
+
     # 置顶标记：普通列表优先展示置顶笔记，回收站保留原状态以便恢复后继续生效。
     is_pinned = models.BooleanField(default=False)
 

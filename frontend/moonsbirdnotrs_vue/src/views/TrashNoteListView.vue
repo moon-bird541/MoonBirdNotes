@@ -545,15 +545,15 @@ onMounted(() => {
 
 .batch-mode-toggle:hover,
 .batch-mode-toggle:focus {
-  border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.08);
-  color: #2563eb;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--brand-blue);
 }
 
 .batch-mode-toggle.is-active {
-  border-color: rgba(37, 99, 235, 0.26);
-  background: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--brand-blue);
 }
 
 .board-summary :deep(.el-button + .el-button) {
@@ -567,7 +567,7 @@ onMounted(() => {
   gap: 14px;
   margin-top: 18px;
   padding: 12px 14px;
-  border: 1px solid rgba(37, 99, 235, 0.14);
+  border: 1px solid var(--accent-border);
   border-radius: var(--radius-lg);
   background: var(--surface-soft);
 }
@@ -663,12 +663,12 @@ onMounted(() => {
 }
 
 .trash-row.is-batch-mode:hover {
-  background: rgba(37, 99, 235, 0.04);
+  background: var(--accent-soft);
 }
 
 .trash-row.is-selected {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.16);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 
 .row-mark {
@@ -693,8 +693,8 @@ onMounted(() => {
 }
 
 .row-select :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  border-color: #2563eb;
-  background-color: #2563eb;
+  border-color: var(--brand-blue);
+  background-color: var(--brand-blue);
 }
 
 .mark-dot {

@@ -185,10 +185,10 @@ defineEmits(['open-action-panel', 'start-resize'])
 .table-selection-overlay {
   position: fixed;
   z-index: 209;
-  border: 2px solid rgba(37, 99, 235, 0.78);
+  border: 2px solid var(--accent-border);
   border-radius: 8px;
   box-shadow:
-    0 0 0 3px rgba(37, 99, 235, 0.12),
+    0 0 0 3px var(--accent-soft),
     inset 0 0 0 1px rgba(255, 255, 255, 0.8);
   pointer-events: none;
 }
@@ -199,8 +199,8 @@ defineEmits(['open-action-panel', 'start-resize'])
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #2563eb;
-  box-shadow: 0 0 0 2px #ffffff;
+  background: var(--brand-blue);
+  box-shadow: 0 0 0 2px var(--paper);
   content: '';
 }
 

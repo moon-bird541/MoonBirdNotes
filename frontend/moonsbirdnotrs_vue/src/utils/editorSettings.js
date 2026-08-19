@@ -1,11 +1,18 @@
 export const EDITOR_SETTINGS_STORAGE_KEY = 'moonbird_editor_settings'
 export const EDITOR_SETTINGS_CHANGE_EVENT = 'moonbird-editor-settings-change'
+export const EDITOR_TOOLBAR_MODES = Object.freeze({
+  CURRENT: 'current',
+  FIXED: 'fixed',
+})
+
+const editorToolbarModes = new Set(Object.values(EDITOR_TOOLBAR_MODES))
 
 export const DEFAULT_EDITOR_SETTINGS = {
   autoSaveEnabled: true,
   autoSaveIntervalMs: 5000,
   fontSizePx: 16,
   noteListPageSize: 10,
+  toolbarMode: EDITOR_TOOLBAR_MODES.CURRENT,
 }
 
 const MIN_AUTO_SAVE_INTERVAL_MS = 3000
@@ -53,6 +60,9 @@ const normalizeEditorSettings = (settings = {}) => ({
   autoSaveIntervalMs: normalizeInterval(settings.autoSaveIntervalMs),
   fontSizePx: normalizeFontSize(settings.fontSizePx),
   noteListPageSize: normalizeNoteListPageSize(settings.noteListPageSize),
+  toolbarMode: editorToolbarModes.has(settings.toolbarMode)
+    ? settings.toolbarMode
+    : DEFAULT_EDITOR_SETTINGS.toolbarMode,
 })
 
 export const getEditorSettings = () => {
