@@ -112,7 +112,7 @@ defineEmits(['close', 'preview', 'toggle'])
   display: flex;
   flex-direction: column;
   width: min(420px, 85vw);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.96));
+  background: var(--overlay-background);
   backdrop-filter: blur(20px);
   box-shadow: -8px 0 48px rgba(15, 23, 42, 0.15);
 }
@@ -134,7 +134,7 @@ defineEmits(['close', 'preview', 'toggle'])
   gap: 16px;
   padding: 28px 26px 22px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), transparent);
+  background: linear-gradient(180deg, var(--panel-background-raised), transparent);
 }
 
 .version-drawer-header p {
@@ -160,9 +160,9 @@ defineEmits(['close', 'preview', 'toggle'])
   justify-content: center;
   width: 40px;
   height: 40px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -170,7 +170,7 @@ defineEmits(['close', 'preview', 'toggle'])
 
 .drawer-close-btn:hover {
   border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(255, 255, 255, 1);
+  background: var(--control-selected-background);
   transform: scale(1.05);
 }
 
@@ -195,7 +195,7 @@ defineEmits(['close', 'preview', 'toggle'])
   padding: 14px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--panel-background-soft);
   cursor: pointer;
   transition: all 180ms ease;
 }
@@ -274,7 +274,7 @@ defineEmits(['close', 'preview', 'toggle'])
   padding: 14px 12px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+  background: var(--overlay-background);
   box-shadow:
     0 12px 32px rgba(15, 23, 42, 0.12),
     0 4px 12px rgba(37, 99, 235, 0.08),
@@ -316,7 +316,7 @@ defineEmits(['close', 'preview', 'toggle'])
   padding: 0 6px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--brand-blue), var(--brand-gold));
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 0.75rem;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(143, 63, 35, 0.28);

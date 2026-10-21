@@ -226,7 +226,7 @@ watch(
 .tag-remove:hover {
   transform: scale(1.1);
   background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .tag-remove :deep(.el-icon) {
@@ -240,7 +240,7 @@ watch(
   padding: 8px 14px;
   border: 1px solid var(--brand-blue);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--overlay-background);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
@@ -265,7 +265,7 @@ watch(
   padding: 8px 14px;
   border: 1px dashed rgba(148, 163, 184, 0.3);
   border-radius: 999px;
-  background: rgba(248, 250, 252, 0.5);
+  background: var(--control-background);
   color: var(--ink-soft);
   font-size: 0.9rem;
   font-weight: 600;

@@ -327,7 +327,7 @@ onMounted(() => {
 .tag-search :deep(.el-input__wrapper) {
   min-height: 46px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--control-background);
   box-shadow: none;
 }
 
@@ -404,7 +404,7 @@ onMounted(() => {
 }
 
 .danger-action {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .empty-state {

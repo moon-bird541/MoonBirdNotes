@@ -45,11 +45,14 @@ const emit = defineEmits([
   'insert-link',
   'insert-image',
   'insert-table',
+  'insert-math',
+  'insert-callout',
   'remember-selection',
 ])
 
 const linkPopoverVisible = ref(false)
 const tablePopoverVisible = ref(false)
+const calloutPopoverVisible = ref(false)
 const linkUrlInput = ref(null)
 const linkForm = reactive({
   text: '',
@@ -74,6 +77,15 @@ const blockButtons = [
   { command: 'orderedList', stateKey: 'orderedList', label: '有序列表', icon: Operation },
   { command: 'taskList', stateKey: 'taskList', label: '任务列表', icon: Checked },
   { command: 'codeBlock', stateKey: 'codeBlock', label: '代码块', icon: Document },
+]
+
+// 提示框类型，与阅读端 utils/richContent.js 的解析保持一致
+const calloutKinds = [
+  { kind: 'note', label: '注意' },
+  { kind: 'tip', label: '提示' },
+  { kind: 'important', label: '重要' },
+  { kind: 'warning', label: '警告' },
+  { kind: 'caution', label: '危险' },
 ]
 
 const tableRows = computed(() =>
@@ -173,12 +185,32 @@ const insertTable = (rows, columns) => {
   tablePopoverVisible.value = false
 }
 
+const insertMath = (displayMode) => {
+  if (!props.editorReady) {
+    return
+  }
+  emit('insert-math', displayMode)
+}
+
+const openCalloutPopover = () => {
+  if (!props.editorReady) {
+    return
+  }
+  calloutPopoverVisible.value = true
+}
+
+const insertCallout = (kind) => {
+  emit('insert-callout', kind)
+  calloutPopoverVisible.value = false
+}
+
 watch(
   () => props.editorReady,
   (ready) => {
     if (!ready) {
       linkPopoverVisible.value = false
       tablePopoverVisible.value = false
+      calloutPopoverVisible.value = false
     }
   }
 )
@@ -244,6 +276,72 @@ watch(
         >
           <el-icon><component :is="button.icon" /></el-icon>
         </button>
+      </div>
+
+      <span class="fixed-toolbar-divider" aria-hidden="true"></span>
+
+      <div class="fixed-toolbar-group" aria-label="富文本">
+        <button
+          type="button"
+          class="fixed-toolbar-button"
+          :disabled="!editorReady"
+          aria-label="插入行内公式"
+          title="行内公式 $…$"
+          @mousedown.prevent="rememberSelection"
+          @click="insertMath(false)"
+        >
+          <span class="is-math">∑</span>
+        </button>
+
+        <button
+          type="button"
+          class="fixed-toolbar-button"
+          :disabled="!editorReady"
+          aria-label="插入块级公式"
+          title="块级公式 $$…$$"
+          @mousedown.prevent="rememberSelection"
+          @click="insertMath(true)"
+        >
+          <span class="is-math-block">∑</span>
+        </button>
+
+        <el-popover
+          :visible="calloutPopoverVisible"
+          trigger="manual"
+          placement="bottom-end"
+          :width="180"
+          popper-class="fixed-callout-popover"
+          @update:visible="calloutPopoverVisible = $event"
+        >
+          <template #reference>
+            <button
+              type="button"
+              class="fixed-toolbar-button"
+              :class="{ 'is-active': calloutPopoverVisible }"
+              :disabled="!editorReady"
+              aria-label="插入提示框"
+              title="插入提示框"
+              @mousedown.prevent="rememberSelection"
+              @click.stop="openCalloutPopover"
+            >
+              <span class="is-callout">❢</span>
+            </button>
+          </template>
+
+          <div class="fixed-callout-picker" @mousedown.prevent>
+            <button
+              v-for="item in calloutKinds"
+              :key="item.kind"
+              type="button"
+              class="fixed-callout-option"
+              :class="`is-${item.kind}`"
+              @click="insertCallout(item.kind)"
+            >
+              <span class="fixed-callout-dot" aria-hidden="true"></span>
+              {{ item.label }}
+            </button>
+          </div>
+        </el-popover>
       </div>
 
       <span class="fixed-toolbar-divider" aria-hidden="true"></span>
@@ -490,6 +588,82 @@ watch(
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: -0.08em;
+}
+
+.is-math {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 700;
+}
+
+.is-math-block {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.is-callout {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.fixed-callout-picker {
+  display: grid;
+  gap: 2px;
+}
+
+.fixed-callout-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.fixed-callout-option:hover,
+.fixed-callout-option:focus-visible {
+  outline: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.fixed-callout-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--callout-dot, var(--brand-blue));
+}
+
+.fixed-callout-option.is-note {
+  --callout-dot: var(--brand-blue);
+}
+
+.fixed-callout-option.is-tip {
+  --callout-dot: var(--moss);
+}
+
+.fixed-callout-option.is-important {
+  --callout-dot: var(--brand-gold);
+}
+
+.fixed-callout-option.is-warning,
+.fixed-callout-option.is-caution {
+  --callout-dot: var(--danger);
 }
 
 .fixed-link-form {

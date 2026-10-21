@@ -190,10 +190,7 @@ const submitLogin = async () => {
   height: 100svh;
   max-height: 100svh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 8% 56%, rgba(91, 119, 78, 0.08), transparent 24%),
-    radial-gradient(circle at 84% 14%, rgba(179, 132, 50, 0.1), transparent 30%),
-    linear-gradient(112deg, #fbf4e7 0%, #f4eadb 47%, #fff9ee 100%);
+  background: var(--app-background);
 }
 
 .login-page::before {
@@ -203,7 +200,7 @@ const submitLogin = async () => {
   left: 0;
   height: min(46vh, 430px);
   background:
-    linear-gradient(180deg, rgba(251, 244, 231, 0), rgba(251, 244, 231, 0.34) 52%, rgba(251, 244, 231, 0.72)),
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--page-bg) 34%, transparent) 52%, color-mix(in srgb, var(--page-bg) 72%, transparent)),
     url('../assets/login-landscape-bg.png') left bottom / 100% auto no-repeat;
   opacity: 0.92;
   content: '';
@@ -214,8 +211,8 @@ const submitLogin = async () => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(111, 86, 58, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(111, 86, 58, 0.03) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--border-soft) 20%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border-soft) 18%, transparent) 1px, transparent 1px);
   background-size: 34px 34px;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 80%);
   content: '';
@@ -263,7 +260,7 @@ const submitLogin = async () => {
 .hero-copy h1 {
   max-width: 720px;
   margin: 0;
-  color: #2d241c;
+  color: var(--text-primary);
   font-size: clamp(3.7rem, 5.25vw, 6.45rem);
   font-weight: 950;
   line-height: 0.95;
@@ -273,7 +270,7 @@ const submitLogin = async () => {
 
 .hero-copy p {
   margin: 22px 0 0;
-  color: #7a6a5b;
+  color: var(--text-muted);
   font-size: clamp(1.08rem, 1.28vw, 1.42rem);
   font-weight: 640;
   line-height: 1.55;
@@ -286,14 +283,10 @@ const submitLogin = async () => {
   min-height: clamp(286px, 32vh, 342px);
   margin-top: 28px;
   overflow: hidden;
-  border: 1px solid rgba(123, 83, 58, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(255, 251, 244, 0.88), rgba(248, 238, 222, 0.78)),
-    rgba(250, 244, 233, 0.86);
-  box-shadow:
-    0 22px 60px rgba(88, 54, 28, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  background: var(--panel-background-raised);
+  box-shadow: var(--shadow-soft), var(--inset-highlight);
   backdrop-filter: blur(18px);
 }
 
@@ -320,7 +313,7 @@ const submitLogin = async () => {
   height: 100%;
   min-height: clamp(286px, 32vh, 342px);
   object-fit: cover;
-  filter: sepia(0.26) saturate(0.72) contrast(0.94) brightness(1.08);
+  filter: sepia(0.26) saturate(0.72) contrast(0.94) brightness(var(--media-brightness));
 }
 
 .feature-stack {
@@ -348,21 +341,21 @@ const submitLogin = async () => {
   height: 50px;
   border: 1px solid rgba(179, 132, 50, 0.18);
   border-radius: 50%;
-  background: rgba(255, 242, 221, 0.78);
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   font-size: 1.55rem;
 }
 
 .feature-row h2 {
   margin: 0 0 6px;
-  color: #312922;
+  color: var(--text-primary);
   font-size: 1.1rem;
   font-weight: 900;
 }
 
 .feature-row p {
   margin: 0;
-  color: #73675c;
+  color: var(--text-muted);
   font-size: 0.92rem;
   font-weight: 600;
   line-height: 1.55;
@@ -390,14 +383,10 @@ const submitLogin = async () => {
   width: min(100%, 604px);
   min-height: 540px;
   padding: 52px 52px 38px;
-  border: 1px solid rgba(123, 83, 58, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
-  background:
-    linear-gradient(160deg, rgba(255, 253, 249, 0.94), rgba(255, 248, 238, 0.82)),
-    rgba(255, 250, 242, 0.88);
-  box-shadow:
-    0 24px 70px rgba(88, 54, 28, 0.11),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  background: var(--overlay-background);
+  box-shadow: var(--shadow-soft), var(--inset-highlight);
   backdrop-filter: blur(22px);
 }
 
@@ -407,7 +396,7 @@ const submitLogin = async () => {
 
 .panel-head h2 {
   margin: 0;
-  color: #2e271f;
+  color: var(--text-primary);
   font-size: clamp(2.35rem, 3.1vw, 3.15rem);
   font-weight: 950;
   line-height: 1.05;
@@ -415,7 +404,7 @@ const submitLogin = async () => {
 
 .panel-text {
   margin: 10px 0 0;
-  color: #75695d;
+  color: var(--text-muted);
   font-size: 1.08rem;
   font-weight: 640;
 }
@@ -426,7 +415,7 @@ const submitLogin = async () => {
 
 .login-form :deep(.el-form-item__label) {
   margin-bottom: 10px;
-  color: #302922;
+  color: var(--text-secondary);
   font-size: 0.95rem;
   font-weight: 850;
 }
@@ -435,7 +424,7 @@ const submitLogin = async () => {
   min-height: 58px;
   padding: 0 18px;
   border-radius: 9px;
-  background: rgba(255, 252, 247, 0.72);
+  background: var(--control-background);
   box-shadow: 0 0 0 1px rgba(123, 83, 58, 0.14) inset;
   transition:
     box-shadow 0.18s var(--motion-calm),
@@ -443,7 +432,7 @@ const submitLogin = async () => {
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  background: rgba(255, 253, 249, 0.94);
+  background: var(--panel-background-raised);
   box-shadow:
     0 0 0 1px rgba(150, 70, 38, 0.38) inset,
     0 14px 30px rgba(150, 70, 38, 0.1);
@@ -455,12 +444,12 @@ const submitLogin = async () => {
 }
 
 .login-form :deep(.el-input__inner) {
-  color: #2e271f;
+  color: var(--text-primary);
   font-weight: 680;
 }
 
 .login-form :deep(.el-input__inner::placeholder) {
-  color: #b8a999;
+  color: var(--text-muted);
 }
 
 .form-options {
@@ -473,7 +462,7 @@ const submitLogin = async () => {
 
 .form-options :deep(.el-checkbox) {
   height: auto;
-  color: #75695d;
+  color: var(--text-muted);
   font-weight: 650;
 }
 
@@ -483,7 +472,7 @@ const submitLogin = async () => {
 }
 
 .form-options :deep(.el-checkbox__input.is-checked + .el-checkbox__label) {
-  color: #75695d;
+  color: var(--text-muted);
 }
 
 .form-options button {
@@ -501,7 +490,7 @@ const submitLogin = async () => {
   border: 1px solid rgba(150, 70, 38, 0.18) !important;
   border-radius: 9px !important;
   background: linear-gradient(180deg, #c3673e, #a64227) !important;
-  color: #fff !important;
+  color: var(--text-on-accent) !important;
   font-size: 1.05rem;
   font-weight: 900;
   box-shadow: 0 16px 28px rgba(150, 70, 38, 0.2) !important;
@@ -518,7 +507,7 @@ const submitLogin = async () => {
   justify-content: center;
   gap: 7px;
   margin: 22px 0 0;
-  color: #766a5f;
+  color: var(--text-muted);
   font-size: 0.9rem;
   font-weight: 650;
   text-align: center;

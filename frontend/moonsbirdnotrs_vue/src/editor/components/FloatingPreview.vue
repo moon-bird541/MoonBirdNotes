@@ -46,7 +46,7 @@ const sanitizedBodyHtml = computed(() => {
       </div>
       <div
         v-if="sanitizedBodyHtml"
-        class="floating-preview-body markdown-body"
+        class="floating-preview-body markdown-body blog-prose"
         v-html="sanitizedBodyHtml"
       ></div>
       <div v-else class="floating-preview-empty">

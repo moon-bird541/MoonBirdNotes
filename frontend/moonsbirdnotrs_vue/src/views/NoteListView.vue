@@ -1362,9 +1362,7 @@ onBeforeUnmount(() => {
   padding: 30px 30px 24px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background:
-    linear-gradient(160deg, rgba(250, 244, 233, 0.92), rgba(232, 219, 199, 0.68)),
-    var(--surface);
+  background: var(--panel-background);
   box-shadow: var(--shadow-soft);
 }
 
@@ -1397,7 +1395,7 @@ onBeforeUnmount(() => {
   padding-inline: 12px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background: rgba(250, 244, 233, 0.82);
+  background: var(--control-background);
   color: var(--brand-navy);
   font-weight: 800;
 }
@@ -1452,7 +1450,7 @@ onBeforeUnmount(() => {
 }
 
 .view-mode-switch button.is-active {
-  background: #fff;
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
@@ -1467,7 +1465,7 @@ onBeforeUnmount(() => {
   padding: 14px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background: rgba(250, 244, 233, 0.72);
+  background: var(--panel-background-soft);
 }
 
 .search-input :deep(.el-input__wrapper),
@@ -1475,7 +1473,7 @@ onBeforeUnmount(() => {
 .sort-select :deep(.el-select__wrapper) {
   min-height: 46px;
   border-radius: var(--radius-md);
-  background: rgba(255, 249, 239, 0.86);
+  background: var(--control-background);
   box-shadow: none;
 }
 
@@ -1510,9 +1508,7 @@ onBeforeUnmount(() => {
   padding: 12px 14px;
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-md);
-  background:
-    linear-gradient(180deg, rgba(250, 244, 233, 0.92), rgba(232, 219, 199, 0.72)),
-    var(--surface);
+  background: var(--panel-background-raised);
 }
 
 .batch-selection-info,
@@ -1614,9 +1610,9 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.72)),
-    repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.035) 0 1px, transparent 1px 92px),
-    repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.08) 0 1px, transparent 1px 72px);
+    repeating-linear-gradient(90deg, var(--accent-soft) 0 1px, transparent 1px 92px),
+    repeating-linear-gradient(180deg, var(--divider) 0 1px, transparent 1px 72px),
+    var(--panel-background-soft);
   box-shadow: inset 0 -24px 42px rgba(37, 99, 235, 0.04);
 }
 
@@ -1643,8 +1639,8 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 246, 255, 0.86)),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.06), transparent 18%, rgba(14, 165, 233, 0.055));
+    linear-gradient(90deg, var(--accent-soft), transparent 18%, var(--moss-soft)),
+    var(--panel-background-raised);
   box-shadow:
     inset 5px 0 0 rgba(37, 99, 235, 0.06),
     inset -5px 0 0 rgba(14, 165, 233, 0.035),
@@ -1699,10 +1695,10 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background:
     linear-gradient(90deg, rgba(37, 99, 235, 0.035), transparent 10%, transparent 90%, rgba(14, 165, 233, 0.04)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.52));
+    var(--panel-background);
   box-shadow:
     inset 0 0 0 4px rgba(37, 99, 235, 0.025),
-    inset 0 16px 24px rgba(255, 255, 255, 0.38);
+    var(--inset-highlight);
 }
 
 .bookcase-tier {
@@ -1723,7 +1719,7 @@ onBeforeUnmount(() => {
   height: 9px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(219, 234, 254, 0.78));
+  background: var(--control-selected-background);
   box-shadow: 0 8px 14px rgba(37, 99, 235, 0.08);
   content: '';
 }
@@ -1746,8 +1742,7 @@ onBeforeUnmount(() => {
   height: 52px;
   border: 1px dashed rgba(148, 163, 184, 0.24);
   border-radius: 5px 4px 4px 5px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(219, 234, 254, 0.16));
+  background: var(--panel-background-soft);
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.025);
   opacity: 0.58;
 }
@@ -1771,7 +1766,7 @@ onBeforeUnmount(() => {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 30%),
     linear-gradient(180deg, var(--book-color-start), var(--book-color-end));
-  color: #fff;
+  color: var(--text-on-accent);
   font: inherit;
   text-align: left;
   box-shadow:
@@ -1793,7 +1788,7 @@ onBeforeUnmount(() => {
   bottom: 9px;
   left: 9px;
   width: 1px;
-  background: rgba(255, 255, 255, 0.38);
+  background: var(--divider);
   content: '';
 }
 
@@ -1824,7 +1819,7 @@ onBeforeUnmount(() => {
   width: 9px;
   height: 29px;
   border-radius: 0 0 5px 5px;
-  background: #fbbf24;
+  background: var(--brand-gold);
   box-shadow: 0 6px 14px rgba(146, 64, 14, 0.2);
 }
 
@@ -1832,7 +1827,7 @@ onBeforeUnmount(() => {
   justify-self: center;
   max-height: calc(var(--book-height) - 54px);
   overflow: hidden;
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0;
@@ -1855,7 +1850,7 @@ onBeforeUnmount(() => {
   padding: 2px 5px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--text-on-accent) 20%, transparent);
   font-size: 0.6rem;
   font-weight: 850;
   text-overflow: ellipsis;
@@ -1882,7 +1877,7 @@ onBeforeUnmount(() => {
   height: 30px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--overlay-background);
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
   transform: translateX(-50%);
 }
@@ -1908,7 +1903,7 @@ onBeforeUnmount(() => {
   padding: 16px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--overlay-background);
   box-shadow: 0 24px 54px rgba(15, 23, 42, 0.18);
   opacity: 0;
   pointer-events: none;
@@ -1926,7 +1921,7 @@ onBeforeUnmount(() => {
   height: 14px;
   border-right: 1px solid rgba(148, 163, 184, 0.18);
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--overlay-background);
   content: '';
   transform: translateX(-50%) rotate(45deg);
 }
@@ -2052,9 +2047,7 @@ onBeforeUnmount(() => {
 }
 
 .note-row.is-selected {
-  background:
-    linear-gradient(180deg, rgba(250, 244, 233, 0.78), rgba(232, 219, 199, 0.72)),
-    var(--surface);
+  background: var(--control-selected-background);
   box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 
@@ -2233,7 +2226,7 @@ onBeforeUnmount(() => {
   height: 40px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background: rgba(250, 244, 233, 0.9);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
@@ -2245,7 +2238,7 @@ onBeforeUnmount(() => {
 .more-button:hover {
   transform: translateY(-1px);
   border-color: var(--accent-border);
-  box-shadow: 0 10px 24px rgba(42, 33, 23, 0.08);
+  box-shadow: var(--shadow-subtle);
 }
 
 .empty-state {
@@ -2286,9 +2279,9 @@ onBeforeUnmount(() => {
   min-height: 48px;
   width: 100%;
   padding: 0 14px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--control-background);
   color: var(--brand-navy);
   font-size: 0.96rem;
   font-weight: 700;
@@ -2304,8 +2297,8 @@ onBeforeUnmount(() => {
 .export-format-option:hover,
 .export-format-option:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
   color: var(--brand-blue);
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
   outline: none;
@@ -2666,9 +2659,9 @@ onBeforeUnmount(() => {
 
   .meta-block {
     padding: 12px 14px;
-    border: 1px solid rgba(148, 163, 184, 0.14);
+    border: 1px solid var(--border-soft);
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.7);
+    background: var(--panel-background-soft);
   }
 
   .more-button {
@@ -2686,10 +2679,10 @@ onBeforeUnmount(() => {
 /* 美化下拉菜单样式 - 必须是非 scoped 样式才能作用于 popper */
 .beautiful-dropdown {
   border-radius: 18px !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: var(--shadow-soft) !important;
   padding: 8px !important;
-  background: rgba(255, 255, 255, 0.98) !important;
+  background: var(--overlay-background) !important;
   backdrop-filter: blur(20px) !important;
   overflow-x: hidden !important;
 }
@@ -2718,7 +2711,7 @@ onBeforeUnmount(() => {
   border-radius: 12px !important;
   margin: 4px 0 !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-weight: 500 !important;
 }
 
@@ -2740,7 +2733,7 @@ onBeforeUnmount(() => {
 }
 
 .beautiful-dropdown .dropdown-item-danger {
-  color: #dc2626 !important;
+  color: var(--danger) !important;
 }
 
 .beautiful-dropdown .dropdown-item-pin .el-icon {
@@ -2757,16 +2750,16 @@ onBeforeUnmount(() => {
 }
 
 .beautiful-dropdown .dropdown-item-danger .el-icon {
-  color: #dc2626 !important;
+  color: var(--danger) !important;
 }
 
 .beautiful-dropdown .dropdown-item-danger:hover {
   background: rgba(220, 38, 38, 0.08) !important;
-  color: #b91c1c !important;
+  color: var(--danger) !important;
 }
 
 .beautiful-dropdown .dropdown-item-danger:hover .el-icon {
-  color: #b91c1c !important;
+  color: var(--danger) !important;
 }
 
 .sort-select-dropdown,
@@ -2857,20 +2850,20 @@ onBeforeUnmount(() => {
 /* 美化确认对话框样式 */
 .beautiful-confirm-box {
   border-radius: 24px !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: var(--shadow-soft) !important;
   padding: 32px !important;
-  background: rgba(255, 255, 255, 0.98) !important;
+  background: var(--overlay-background) !important;
   backdrop-filter: blur(24px) !important;
 }
 
 .beautiful-confirm-box .el-message-box__header {
   padding: 0 0 20px 0 !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+  border-bottom: 1px solid var(--divider) !important;
 }
 
 .beautiful-confirm-box .el-message-box__title {
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-size: 1.4rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.02em !important;
@@ -2878,7 +2871,7 @@ onBeforeUnmount(() => {
 
 .beautiful-confirm-box .el-message-box__content {
   padding: 24px 0 !important;
-  color: #64748b !important;
+  color: var(--text-muted) !important;
   font-size: 1rem !important;
   line-height: 1.8 !important;
 }
@@ -2887,7 +2880,7 @@ onBeforeUnmount(() => {
   display: flex !important;
   gap: 12px !important;
   padding: 20px 0 0 0 !important;
-  border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+  border-top: 1px solid var(--divider) !important;
 }
 
 .beautiful-confirm-button {
@@ -2896,7 +2889,7 @@ onBeforeUnmount(() => {
   border: none !important;
   border-radius: var(--radius-md) !important;
   background: var(--danger) !important;
-  color: white !important;
+  color: var(--text-on-accent) !important;
   font-weight: 600 !important;
   box-shadow: none !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -2911,19 +2904,19 @@ onBeforeUnmount(() => {
 .beautiful-cancel-button {
   min-height: 44px !important;
   padding: 0 24px !important;
-  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  border: 1px solid var(--border-soft) !important;
   border-radius: 14px !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  color: #0f172a !important;
+  background: var(--control-background) !important;
+  color: var(--text-primary) !important;
   font-weight: 600 !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .beautiful-cancel-button:hover {
   transform: translateY(-1px) !important;
-  border-color: rgba(37, 99, 235, 0.3) !important;
-  background: rgba(255, 255, 255, 1) !important;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1) !important;
+  border-color: var(--accent-border) !important;
+  background: var(--control-hover-background) !important;
+  box-shadow: var(--shadow-subtle) !important;
 }
 
 .beautiful-confirm-box .el-message-box__status {
@@ -2945,7 +2938,7 @@ onBeforeUnmount(() => {
 }
 
 .export-format-dialog .el-dialog__title {
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-weight: 800 !important;
 }
 
@@ -2959,7 +2952,7 @@ onBeforeUnmount(() => {
 }
 
 .batch-tag-dialog .el-dialog__title {
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-weight: 800 !important;
 }
 

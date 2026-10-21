@@ -259,7 +259,7 @@ onMounted(() => {
                 </div>
 
                 <!-- 后端已经完成 Markdown 到 HTML 的渲染，这里直接显示结果。 -->
-                <article class="html-preview markdown-body" v-html="uploadedNote.rendered_html"></article>
+                <article class="html-preview markdown-body blog-prose" v-html="uploadedNote.rendered_html"></article>
               </div>
 
               <div v-else class="preview-empty">
@@ -449,7 +449,7 @@ onMounted(() => {
   padding: 22px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background: rgba(250, 244, 233, 0.72);
+  background: var(--panel-background-soft);
 }
 
 .tag-head {
@@ -487,7 +487,7 @@ onMounted(() => {
   padding: 22px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background: rgba(250, 244, 233, 0.72);
+  background: var(--panel-background-soft);
 }
 
 .selected-file-head p {
@@ -550,7 +550,7 @@ onMounted(() => {
 .preview-empty {
   margin-top: 26px;
   border-radius: var(--radius-md);
-  background: rgba(250, 244, 233, 0.76);
+  background: var(--panel-background-soft);
 }
 
 .preview-scroll {

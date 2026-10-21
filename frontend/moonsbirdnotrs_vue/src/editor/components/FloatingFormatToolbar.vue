@@ -287,7 +287,7 @@ defineExpose({
   padding: 0 11px;
   border: 1px solid rgba(148, 163, 184, 0.1);
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
@@ -302,7 +302,7 @@ defineExpose({
 .toolbar-chip:hover {
   transform: translateY(-1px);
   border-color: rgba(37, 99, 235, 0.2);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.12), rgba(255, 255, 255, 0.82));
+  background: var(--control-hover-background);
   color: var(--brand-blue);
   box-shadow:
     0 10px 20px rgba(15, 23, 42, 0.1),
@@ -320,15 +320,15 @@ defineExpose({
 .toolbar-button.is-active,
 .toolbar-chip.is-active {
   border-color: rgba(37, 99, 235, 0.18);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.09), rgba(255, 255, 255, 0.82));
+  background: var(--control-selected-background);
   color: var(--brand-blue);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow: var(--inset-highlight);
 }
 
 .toolbar-button.is-full,
 .toolbar-chip.is-full {
   border-color: rgba(37, 99, 235, 0.24);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.16), rgba(255, 255, 255, 0.88));
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   box-shadow:
     0 10px 22px rgba(37, 99, 235, 0.12),

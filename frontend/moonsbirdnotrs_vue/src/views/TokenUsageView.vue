@@ -324,7 +324,7 @@ onMounted(loadUsage)
   min-height: 100svh;
   padding: 34px clamp(28px, 5vw, 76px) 56px;
   overflow-x: hidden;
-  background: var(--page-bg, #f7f2e8);
+  background: var(--page-bg);
   color: var(--brand-navy, #25354b);
 }
 
@@ -403,9 +403,9 @@ onMounted(loadUsage)
 .date-fields input,
 .usage-pagination select {
   min-height: 38px;
-  border: 1px solid rgba(45, 57, 73, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.32);
+  background: var(--control-background);
   color: inherit;
   font: inherit;
 }
@@ -424,7 +424,7 @@ onMounted(loadUsage)
   border: 1px solid var(--moss, #657763);
   border-radius: 6px;
   background: var(--moss, #657763);
-  color: #fff;
+  color: var(--text-on-accent);
   font: inherit;
   font-size: 0.76rem;
   font-weight: 700;
@@ -437,7 +437,7 @@ onMounted(loadUsage)
 }
 .filter-actions button:disabled,
 .usage-pagination button:disabled { cursor: default; opacity: 0.45; }
-.filter-error { flex-basis: 100%; margin: 0; color: #a24d3f; font-size: 0.75rem; }
+.filter-error { flex-basis: 100%; margin: 0; color: var(--danger); font-size: 0.75rem; }
 
 .usage-overview {
   display: grid;
@@ -519,8 +519,8 @@ onMounted(loadUsage)
 .usage-table code { color: var(--moss, #657763); font-size: 0.75rem; font-weight: 700; }
 .usage-table td:last-child { width: 24px; padding-right: 4px; color: var(--moss, #657763); font-size: 1rem; }
 .total-cell { font-weight: 750; }
-.total-cell small { display: block; margin-top: 3px; color: #a57c32; font-size: 0.62rem; font-weight: 600; }
-.status-label { display: inline-flex; align-items: center; gap: 6px; color: #a24d3f; }
+.total-cell small { display: block; margin-top: 3px; color: var(--brand-gold); font-size: 0.62rem; font-weight: 600; }
+.status-label { display: inline-flex; align-items: center; gap: 6px; color: var(--danger); }
 .status-label::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ''; }
 .status-label.is-completed { color: var(--moss, #657763); }
 
@@ -541,7 +541,7 @@ onMounted(loadUsage)
 .page-state { display: grid; place-items: center; min-height: 260px; border-top: 1px solid rgba(45, 57, 73, 0.13); color: var(--text-muted, #766f65); text-align: center; }
 .page-state > svg { font-size: 2rem; }
 .page-state p { margin: 12px 0; }
-.page-state.is-error { color: #a24d3f; }
+.page-state.is-error { color: var(--danger); }
 .spinner { width: 24px; height: 24px; border: 2px solid rgba(101, 119, 99, 0.2); border-top-color: var(--moss, #657763); border-radius: 50%; animation: spin 0.7s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 

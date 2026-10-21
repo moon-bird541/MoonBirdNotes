@@ -396,7 +396,7 @@ onMounted(loadConversationList)
 }
 
 .clear-button:hover {
-  background: rgba(255, 255, 255, 0.48);
+  background: var(--control-hover-background);
   transform: translateY(-1px);
 }
 
@@ -514,7 +514,7 @@ onMounted(loadConversationList)
   padding: 18px 22px;
   border: 1px solid rgba(76, 67, 53, 0.1);
   border-radius: 20px 20px 20px 6px;
-  background: rgba(255, 253, 248, 0.58);
+  background: var(--panel-background-soft);
   box-shadow: 0 8px 24px rgba(70, 58, 42, 0.045);
 }
 
@@ -524,7 +524,7 @@ onMounted(loadConversationList)
   max-width: 100%;
   border-color: rgba(155, 82, 49, 0.14);
   border-radius: 20px 20px 6px 20px;
-  background: linear-gradient(135deg, rgba(255, 246, 235, 0.94), rgba(248, 232, 212, 0.72));
+  background: var(--control-selected-background);
   box-shadow: 0 8px 24px rgba(131, 72, 43, 0.055);
 }
 
@@ -572,14 +572,14 @@ onMounted(loadConversationList)
 
 .answer-markdown :deep(p) {
   margin: 0 0 16px;
-  color: #2f3d4f;
+  color: var(--text-secondary);
 }
 
 .answer-markdown :deep(h1),
 .answer-markdown :deep(h2),
 .answer-markdown :deep(h3),
 .answer-markdown :deep(h4) {
-  color: #25354b;
+  color: var(--text-primary);
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
   font-weight: 720;
   line-height: 1.35;
@@ -610,7 +610,7 @@ onMounted(loadConversationList)
 }
 
 .answer-markdown :deep(strong) {
-  color: #27374a;
+  color: var(--text-secondary);
   font-weight: 760;
 }
 
@@ -618,7 +618,7 @@ onMounted(loadConversationList)
 .answer-markdown :deep(p:has(> strong:only-child)) {
   margin: 26px 0 12px;
   padding: 0;
-  color: #25354b;
+  color: var(--text-primary);
   font-size: 1.08rem;
   line-height: 1.4;
 }
@@ -631,7 +631,7 @@ onMounted(loadConversationList)
 .answer-markdown :deep(ol) {
   margin: 8px 0 18px;
   padding-left: 1.45rem;
-  color: #344255;
+  color: var(--text-secondary);
 }
 
 .answer-markdown :deep(li) {
@@ -640,7 +640,7 @@ onMounted(loadConversationList)
 }
 
 .answer-markdown :deep(li)::marker {
-  color: #6f7780;
+  color: var(--text-muted);
 }
 
 .answer-markdown :deep(li + li) {
@@ -656,7 +656,7 @@ onMounted(loadConversationList)
   border: 1px solid rgba(143, 73, 48, 0.14);
   border-radius: 6px;
   background: rgba(143, 73, 48, 0.065);
-  color: #914b32;
+  color: var(--accent);
   font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
   font-size: 0.88em;
   overflow-wrap: anywhere;
@@ -667,7 +667,7 @@ onMounted(loadConversationList)
   overflow: hidden;
   border: 1px solid rgba(76, 67, 53, 0.14);
   border-radius: 12px;
-  background: #f3f0e9;
+  background: var(--panel-background-raised);
   box-shadow: 0 3px 12px rgba(70, 58, 42, 0.045);
 }
 
@@ -677,9 +677,9 @@ onMounted(loadConversationList)
   justify-content: space-between;
   min-height: 38px;
   padding: 0 14px;
-  border-bottom: 1px solid rgba(76, 67, 53, 0.1);
-  background: #ebe7de;
-  color: #787168;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel-background-raised);
+  color: var(--text-muted);
   font: 600 0.68rem/1 'Cascadia Code', Consolas, monospace;
 }
 
@@ -687,13 +687,13 @@ onMounted(loadConversationList)
   padding: 6px 0;
   border: 0;
   background: transparent;
-  color: #657763;
+  color: var(--moss);
   font: inherit;
   cursor: pointer;
 }
 
 .answer-markdown :deep(.agent-code-copy:hover) {
-  color: #25354b;
+  color: var(--text-primary);
 }
 
 .answer-markdown :deep(pre) {
@@ -702,9 +702,9 @@ onMounted(loadConversationList)
   padding: 16px 18px 18px;
   border: 0;
   border-radius: 0;
-  background: #f3f0e9;
+  background: var(--panel-background-raised);
   box-shadow: none;
-  color: #344255;
+  color: var(--text-secondary);
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -715,7 +715,7 @@ onMounted(loadConversationList)
   padding: 0;
   border: 0;
   background: transparent;
-  color: #344255;
+  color: var(--text-secondary);
   font-size: 0.82rem;
   line-height: 1.62;
   overflow-wrap: normal;
@@ -753,7 +753,7 @@ onMounted(loadConversationList)
 
 .answer-markdown :deep(th) {
   background: rgba(101, 119, 99, 0.07);
-  color: #25354b;
+  color: var(--text-primary);
   font-weight: 750;
 }
 
@@ -766,7 +766,7 @@ onMounted(loadConversationList)
 
 .insufficient-note {
   margin: 18px 0 0;
-  color: #8a6246;
+  color: var(--accent);
   font-size: 0.84rem;
 }
 
@@ -839,7 +839,7 @@ onMounted(loadConversationList)
   padding: 16px 20px;
   border: 1px solid rgba(76, 67, 53, 0.09);
   border-radius: 20px 20px 20px 6px;
-  background: rgba(255, 253, 248, 0.5);
+  background: var(--panel-background-soft);
 }
 
 .thinking-line span {
@@ -861,8 +861,8 @@ onMounted(loadConversationList)
 
 .composer-wrap {
   padding: 14px clamp(28px, 7vw, 112px) 22px;
-  border-top: 1px solid rgba(76, 67, 53, 0.12);
-  background: rgba(247, 242, 232, 0.92);
+  border-top: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--overlay-background) 94%, transparent);
   backdrop-filter: blur(16px);
 }
 
@@ -873,10 +873,10 @@ onMounted(loadConversationList)
   width: min(900px, 100%);
   margin: 0 auto;
   padding: 12px 12px 12px 18px;
-  border: 1px solid rgba(45, 57, 73, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 18px;
-  background: rgba(255, 253, 248, 0.84);
-  box-shadow: 0 12px 36px rgba(70, 58, 42, 0.08);
+  background: var(--control-background);
+  box-shadow: var(--shadow-soft);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -900,7 +900,7 @@ onMounted(loadConversationList)
 }
 
 .composer textarea::placeholder {
-  color: #9a9389;
+  color: var(--text-muted);
 }
 
 .composer button {
@@ -912,7 +912,7 @@ onMounted(loadConversationList)
   border: 0;
   border-radius: 50%;
   background: var(--brand-navy, #25354b);
-  color: white;
+  color: var(--text-on-accent);
   cursor: pointer;
   transition: transform 0.18s ease, opacity 0.18s ease;
 }
@@ -937,7 +937,7 @@ onMounted(loadConversationList)
 .error-message {
   width: min(900px, 100%);
   margin: 0 auto 10px;
-  color: #a24d3f;
+  color: var(--danger);
   font-size: 0.82rem;
 }
 

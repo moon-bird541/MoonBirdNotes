@@ -235,7 +235,7 @@ defineEmits([
   padding: 12px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--overlay-background);
   box-shadow:
     0 18px 42px rgba(15, 23, 42, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -270,7 +270,7 @@ defineEmits([
   padding: 3px;
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 8px;
-  background: rgba(248, 250, 252, 0.78);
+  background: var(--control-background);
 }
 
 .table-action-grid,
@@ -315,7 +315,7 @@ defineEmits([
 .table-action-button {
   justify-content: flex-start;
   border-color: rgba(148, 163, 184, 0.13);
-  background: rgba(248, 250, 252, 0.52);
+  background: var(--control-background);
 }
 
 .table-align-button {
@@ -335,7 +335,7 @@ defineEmits([
 
 .table-align-button.is-active {
   border-color: rgba(37, 99, 235, 0.28);
-  background: #ffffff;
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
@@ -352,14 +352,14 @@ defineEmits([
 
 .table-action-button.is-danger {
   border-color: rgba(239, 68, 68, 0.14);
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .table-action-button.is-danger:hover:not(:disabled),
 .table-action-button.is-danger:focus-visible {
   border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(254, 226, 226, 0.72);
-  color: #b91c1c;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .table-action-button :deep(.el-icon) {

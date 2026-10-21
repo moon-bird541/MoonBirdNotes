@@ -127,9 +127,10 @@ test('token ledger shows totals and opens the selected run trace', async ({ page
   await page.goto('/token-usage')
 
   await expect(page.getByRole('heading', { name: 'Token 用量' })).toBeVisible()
+  const usageSummary = page.getByLabel('Token 用量汇总')
   await expect(page.getByText('1,500')).toHaveCount(2)
-  await expect(page.getByText('1,200')).toBeVisible()
-  await expect(page.getByText('300')).toBeVisible()
+  await expect(usageSummary.getByText('1,200')).toBeVisible()
+  await expect(usageSummary.getByText('300')).toBeVisible()
 
   await page.getByText(runId.slice(0, 8)).click()
   await expect(page).toHaveURL(new RegExp(`/rag-traces\\?run=${runId}$`))

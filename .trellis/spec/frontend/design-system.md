@@ -26,6 +26,22 @@ The palette is old-paper white, ink, warm gray, rust, moss, tea, and muted gold.
 
 Do not opportunistically rename widely used legacy tokens during a feature. New code should prefer the semantic tokens where one exists.
 
+### Dark-theme surface contract
+
+Page and component CSS must consume the shared environment and surface tokens instead of embedding light paper colors. Use `--app-background`/`--sidebar-background` for the frame, `--panel-background*` for content layers, `--overlay-background` for temporary layers, `--control-*` for inputs and interactive states, and the dedicated `--code-*`, `--quote-background`, and `--table-*` tokens for rich content. Both light and dark roots define these tokens, so components must not branch on `data-theme` for ordinary surfaces.
+
+```css
+/* Wrong: this remains a white island in dark mode. */
+.panel { background: rgba(248, 250, 252, 0.78); }
+
+/* Correct: the same component follows both themes. */
+.panel { background: var(--panel-background-soft); }
+```
+
+Toast UI Editor/Viewer ships high-specificity heading and code defaults. Override them only inside the owning `.toastui-editor-contents` namespace; headings use `--text-primary`, `pre` uses `--code-background`/`--code-text`, and nested `pre code` must remain transparent with inherited text color. This prevents the editor and reader from reintroducing light code blocks without adding broad global selectors.
+
+For theme-visible work, Playwright must assert immediate switching and stored preference, at least one computed dark surface, a 4.5:1 core text/surface contrast, and no page-level overflow at the 390px viewport. Screenshot representative desktop and mobile routes after their existing entrance transitions settle; animations can otherwise resemble low-contrast theme failures in captures.
+
 ## Components and Icons
 
 - Element Plus supplies controls/overlays, but global and scoped overrides give them MoonBird spacing, radii, surfaces, focus, and feedback.

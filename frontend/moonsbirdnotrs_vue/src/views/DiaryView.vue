@@ -18,6 +18,7 @@ import '@toast-ui/editor/dist/toastui-editor-viewer.css'
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
 import diaryEmptyIllustration from '../assets/diary-empty-illustration.png'
+import { enhanceRichContent } from '../utils/richContent'
 import { applyTableLayoutsToTables, extractTableLayoutMetadata } from '../utils/tableLayout'
 import '../styles/markdown.css'
 
@@ -237,6 +238,7 @@ const renderViewerContent = async () => {
   const scheduleViewerTableLayouts = () => {
     window.requestAnimationFrame(() => {
       applyViewerTableLayouts()
+      enhanceRichContent(articleViewer.value)
       window.requestAnimationFrame(applyViewerTableLayouts)
     })
   }
@@ -518,7 +520,7 @@ onBeforeUnmount(() => {
                 <span>{{ selectedEntry.title }}</span>
               </div>
 
-              <div ref="articleViewer" class="diary-viewer detail-viewer"></div>
+              <div ref="articleViewer" class="diary-viewer detail-viewer blog-prose"></div>
             </template>
 
             <template v-else>
@@ -575,20 +577,16 @@ onBeforeUnmount(() => {
 }
 
 :global(:root[data-theme='dark']) .diary-page {
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 18, 32, 0.9) 58%, var(--page-bg) 100%),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-  background-size: auto, 88px 88px, 88px 88px;
+  background: var(--app-background);
 }
 
 :global(:root[data-theme='dark']) .diary-stage {
-  --diary-panel-bg: rgba(17, 24, 39, 0.9);
-  --diary-panel-strong: rgba(30, 41, 59, 0.82);
-  --diary-panel-muted: rgba(15, 23, 42, 0.62);
-  --diary-border: rgba(148, 163, 184, 0.18);
-  --diary-shadow: 0 24px 54px rgba(0, 0, 0, 0.28);
-  --diary-blue-shadow: 0 18px 32px rgba(130, 166, 255, 0.14);
+  --diary-panel-bg: var(--panel-background);
+  --diary-panel-strong: var(--panel-background-raised);
+  --diary-panel-muted: var(--panel-background-soft);
+  --diary-border: var(--border-soft);
+  --diary-shadow: var(--shadow-soft);
+  --diary-blue-shadow: var(--shadow-subtle);
 }
 
 .diary-header {
@@ -661,13 +659,13 @@ onBeforeUnmount(() => {
 .diary-status-chip {
   border-color: rgba(16, 185, 129, 0.22);
   background: rgba(16, 185, 129, 0.08);
-  color: #047857;
+  color: var(--moss);
 }
 
 .diary-status-chip.is-empty {
   border-color: rgba(217, 119, 6, 0.2);
   background: rgba(245, 158, 11, 0.09);
-  color: #b45309;
+  color: var(--brand-gold);
 }
 
 .diary-header-actions {
@@ -771,6 +769,10 @@ onBeforeUnmount(() => {
     background 0.2s ease,
     color 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.diary-header-actions :deep(.el-button:not(.el-button--primary)) {
+  box-shadow: var(--shadow-subtle);
 }
 
 .icon-button:hover {
@@ -906,7 +908,7 @@ onBeforeUnmount(() => {
 
 .day-cell.is-today span {
   background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  color: var(--brand-gold);
 }
 
 .day-cell.has-entry {
@@ -929,7 +931,7 @@ onBeforeUnmount(() => {
 
 .day-cell.is-selected span {
   background: var(--brand-blue);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .day-cell.is-selected::after {
@@ -1070,137 +1072,16 @@ onBeforeUnmount(() => {
   max-width: 900px;
   margin: 0 auto;
   overflow-x: hidden;
-  color: var(--brand-navy);
-  font-family: inherit;
   font-size: 1rem;
-  line-height: 1.86;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
-.diary-viewer :deep(.toastui-editor-contents h1),
-.diary-viewer :deep(.toastui-editor-contents h2),
-.diary-viewer :deep(.toastui-editor-contents h3),
-.diary-viewer :deep(.toastui-editor-contents h4),
-.diary-viewer :deep(.toastui-editor-contents h5),
-.diary-viewer :deep(.toastui-editor-contents h6) {
-  border-bottom: none;
-  color: var(--brand-navy);
-  letter-spacing: 0;
-  line-height: 1.18;
-  padding-bottom: 0;
-}
-
-.diary-viewer :deep(.toastui-editor-contents h1) {
-  margin: 0 0 18px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--diary-border);
-  font-size: 2.35rem;
-  font-weight: 900;
-}
-
-.diary-viewer :deep(.toastui-editor-contents h2) {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 26px 0 10px;
-  font-size: 1.34rem;
-  font-weight: 900;
-}
-
-.diary-viewer :deep(.toastui-editor-contents h2::before) {
-  width: 6px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--brand-blue);
-  content: '';
-}
-
-.diary-viewer :deep(.toastui-editor-contents p),
-.diary-viewer :deep(.toastui-editor-contents li),
-.diary-viewer :deep(.toastui-editor-contents blockquote) {
-  color: var(--brand-navy);
-}
-
-.diary-viewer :deep(.toastui-editor-contents pre),
-.diary-viewer :deep(.toastui-editor-contents code),
-.diary-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block),
-.diary-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block code) {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.diary-viewer :deep(.toastui-editor-contents pre),
-.diary-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block) {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-.diary-viewer :deep(.toastui-editor-contents blockquote) {
-  margin: 0 0 20px;
-  padding: 15px 17px;
-  border-left: 4px solid var(--brand-blue);
-  border-radius: 0 8px 8px 0;
-  background: rgba(37, 99, 235, 0.06);
-  color: var(--ink-soft);
-}
-
-.diary-viewer :deep(.toastui-editor-contents blockquote > :last-child) {
-  margin-bottom: 0;
-}
-
-.diary-viewer :deep(.toastui-editor-contents ul),
-.diary-viewer :deep(.toastui-editor-contents ol) {
-  padding-left: 1.28em;
-}
-
-.diary-viewer :deep(.toastui-editor-contents li + li) {
-  margin-top: 0.4em;
-}
-
-.diary-viewer :deep(.toastui-editor-contents table) {
-  width: 100%;
-  inline-size: 100%;
-  max-width: 100%;
-  max-inline-size: 100%;
-  min-width: 0;
-  min-inline-size: 0;
-  margin: 14px 0 20px;
-  overflow: hidden;
-  box-sizing: border-box;
-  border: 1px solid rgba(100, 116, 139, 0.26) !important;
-  border-collapse: collapse;
-  border-radius: 8px;
-  background: var(--surface-soft) !important;
-  table-layout: fixed;
-}
-
-.diary-viewer :deep(.toastui-editor-contents thead th) {
-  background: rgba(37, 99, 235, 0.08) !important;
-}
-
-.diary-viewer :deep(.toastui-editor-contents th),
-.diary-viewer :deep(.toastui-editor-contents td) {
-  min-width: 0;
-  max-width: 0;
-  padding: 12px 14px !important;
-  border-right: 1px solid rgba(100, 116, 139, 0.22) !important;
-  border-bottom: 1px solid rgba(100, 116, 139, 0.22) !important;
+/* 内容排版统一由全局 styles/blog-prose.css 提供（对齐博客），
+   这里只保留 toast-ui 结构相关的必要修正。 */
+.diary-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block pre) {
+  margin: 0;
+  border: none;
+  border-radius: 0;
   background: transparent;
-  color: var(--brand-navy);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  vertical-align: top;
-}
-
-.diary-viewer :deep(.toastui-editor-contents th:last-child),
-.diary-viewer :deep(.toastui-editor-contents td:last-child) {
-  border-right: none !important;
-}
-
-.diary-viewer :deep(.toastui-editor-contents tr:last-child td) {
-  border-bottom: none !important;
 }
 
 .empty-diary {
@@ -1370,18 +1251,13 @@ onBeforeUnmount(() => {
 }
 
 :global(:root[data-theme='dark']) .diary-stage {
-  --diary-panel-bg: rgba(17, 24, 39, 0.68);
-  --diary-panel-strong: rgba(30, 41, 59, 0.78);
-  --diary-panel-muted: rgba(15, 23, 42, 0.58);
-  --diary-border: rgba(148, 163, 184, 0.22);
-  --diary-glow: rgba(130, 166, 255, 0.28);
-  --diary-shadow:
-    16px 16px 38px rgba(0, 0, 0, 0.26),
-    -12px -12px 34px rgba(51, 65, 85, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  --diary-inner-shadow:
-    inset 7px 7px 18px rgba(0, 0, 0, 0.18),
-    inset -7px -7px 18px rgba(71, 85, 105, 0.1);
+  --diary-panel-bg: var(--panel-background);
+  --diary-panel-strong: var(--panel-background-raised);
+  --diary-panel-muted: var(--panel-background-soft);
+  --diary-border: var(--border-soft);
+  --diary-glow: var(--accent-border);
+  --diary-shadow: var(--shadow-soft);
+  --diary-inner-shadow: inset 0 0 0 1px var(--border-soft);
 }
 
 .diary-header {
@@ -1405,7 +1281,7 @@ onBeforeUnmount(() => {
 .diary-status-chip {
   min-height: 32px;
   border-color: rgba(173, 190, 214, 0.24);
-  background: rgba(255, 255, 255, 0.58);
+  background: var(--control-background);
   box-shadow:
     7px 7px 18px rgba(148, 163, 184, 0.12),
     -7px -7px 16px rgba(255, 255, 255, 0.72);
@@ -1414,8 +1290,8 @@ onBeforeUnmount(() => {
 
 .diary-status-chip {
   border-color: rgba(20, 184, 166, 0.22);
-  background: rgba(240, 253, 250, 0.62);
-  color: #0f766e;
+  background: color-mix(in srgb, var(--moss) 10%, var(--control-background));
+  color: var(--moss);
 }
 
 .diary-status-chip.is-empty {
@@ -1453,7 +1329,7 @@ onBeforeUnmount(() => {
 }
 
 .diary-header-actions :deep(.el-button:not(.el-button--primary)) {
-  background: rgba(255, 255, 255, 0.58);
+  background: var(--control-background);
   box-shadow:
     7px 7px 18px rgba(148, 163, 184, 0.11),
     -7px -7px 18px rgba(255, 255, 255, 0.74);
@@ -1495,7 +1371,7 @@ onBeforeUnmount(() => {
   z-index: 0;
   border-radius: 999px;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.82) 0%, rgba(125, 211, 252, 0.36) 42%, rgba(37, 99, 235, 0) 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--text-primary) 24%, transparent) 0%, var(--accent-soft) 42%, transparent 72%);
   transform: scale(0);
   animation: actionRipple 0.62s ease-out both;
 }
@@ -1516,7 +1392,7 @@ onBeforeUnmount(() => {
   height: auto;
   padding: 1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(56, 189, 248, 0.36), rgba(34, 81, 209, 0.22), rgba(255, 255, 255, 0.72));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-primary) 16%, transparent), var(--accent-soft), transparent);
   opacity: 0.9;
   pointer-events: none;
   -webkit-mask:
@@ -1537,7 +1413,7 @@ onBeforeUnmount(() => {
 
 .icon-button {
   border-color: rgba(173, 190, 214, 0.26);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--control-background);
   box-shadow:
     6px 6px 16px rgba(148, 163, 184, 0.12),
     -6px -6px 16px rgba(255, 255, 255, 0.78);
@@ -1545,7 +1421,7 @@ onBeforeUnmount(() => {
 
 .icon-button:hover {
   border-color: rgba(14, 165, 233, 0.32);
-  background: rgba(240, 249, 255, 0.82);
+  background: var(--control-hover-background);
   box-shadow:
     0 12px 24px rgba(34, 81, 209, 0.13),
     0 0 22px rgba(14, 165, 233, 0.18);
@@ -1597,7 +1473,7 @@ onBeforeUnmount(() => {
 .day-cell {
   min-height: 64px;
   border-color: rgba(255, 255, 255, 0);
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--panel-background-soft);
   box-shadow:
     5px 5px 13px rgba(148, 163, 184, 0.08),
     -5px -5px 13px rgba(255, 255, 255, 0.46);
@@ -1608,7 +1484,7 @@ onBeforeUnmount(() => {
   z-index: 3;
   transform: translateY(-3px) scale(1.1);
   border-color: rgba(14, 165, 233, 0.28);
-  background: rgba(240, 249, 255, 0.78);
+  background: var(--control-hover-background);
   box-shadow:
     0 14px 28px rgba(34, 81, 209, 0.13),
     0 0 26px rgba(14, 165, 233, 0.18);
@@ -1617,7 +1493,7 @@ onBeforeUnmount(() => {
 .day-cell span {
   position: relative;
   overflow: visible;
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--panel-background-soft) 46%, transparent);
   transition:
     background 0.24s ease,
     color 0.24s ease,
@@ -1634,12 +1510,12 @@ onBeforeUnmount(() => {
 
 .day-cell.is-today span {
   background: rgba(14, 165, 233, 0.1);
-  color: #0369a1;
+  color: var(--moss);
 }
 
 .day-cell.has-entry {
   border-color: rgba(14, 165, 233, 0.14);
-  background: rgba(240, 249, 255, 0.52);
+  background: color-mix(in srgb, var(--moss) 8%, var(--control-background));
 }
 
 .day-cell.has-entry::after {
@@ -1661,7 +1537,7 @@ onBeforeUnmount(() => {
 }
 
 .day-cell.is-selected span {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   box-shadow:
     inset 2px 2px 7px rgba(148, 163, 184, 0.12),
@@ -1802,7 +1678,7 @@ onBeforeUnmount(() => {
 .diary-meta-item,
 .diary-note-title {
   border-color: rgba(173, 190, 214, 0.2);
-  background: rgba(255, 255, 255, 0.44);
+  background: var(--panel-background-soft);
   box-shadow:
     5px 5px 14px rgba(148, 163, 184, 0.08),
     -5px -5px 14px rgba(255, 255, 255, 0.55);
@@ -2049,13 +1925,13 @@ onBeforeUnmount(() => {
 .diary-status-chip {
   min-height: 34px;
   border-color: rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--control-background);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 }
 
 .diary-status-chip.is-empty {
   border-color: rgba(14, 165, 233, 0.22);
-  background: rgba(240, 249, 255, 0.84);
+  background: var(--control-selected-background);
 }
 
 .diary-layout {
@@ -2074,7 +1950,7 @@ onBeforeUnmount(() => {
 .diary-calendar-panel::before,
 .diary-reader::before {
   opacity: 0.32;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(37, 99, 235, 0.16), rgba(255, 255, 255, 0.48));
+  background: var(--quote-background);
 }
 
 .diary-calendar-panel {
@@ -2095,22 +1971,22 @@ onBeforeUnmount(() => {
   width: 38px;
   height: 38px;
   border-color: rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--control-background);
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
 }
 
 .icon-button:hover {
   transform: translateY(-1px) scale(1.02);
   border-color: rgba(37, 99, 235, 0.24);
-  background: rgba(248, 250, 252, 0.94);
+  background: var(--control-hover-background);
   box-shadow: 0 12px 24px rgba(34, 81, 209, 0.1);
 }
 
 .calendar-overview {
   margin-bottom: 22px;
   border-color: rgba(148, 163, 184, 0.14);
-  background: rgba(255, 255, 255, 0.64);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  background: var(--panel-background-soft);
+  box-shadow: var(--inset-highlight);
 }
 
 .calendar-overview span {
@@ -2123,7 +1999,7 @@ onBeforeUnmount(() => {
 }
 
 .calendar-overview strong {
-  color: #101827;
+  color: var(--text-primary);
   font-size: 1.05rem;
   font-weight: 850;
 }
@@ -2138,7 +2014,7 @@ onBeforeUnmount(() => {
 }
 
 .weekday-row span {
-  color: #718096;
+  color: var(--text-muted);
   font-size: 0.72rem;
 }
 
@@ -2150,26 +2026,26 @@ onBeforeUnmount(() => {
   min-height: 58px;
   padding: 8px 9px;
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.34);
+  background: var(--panel-background-soft);
   box-shadow: none;
 }
 
 .day-cell:hover {
   transform: translateY(-2px) scale(1.025);
   border-color: rgba(37, 99, 235, 0.16);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--control-hover-background);
   box-shadow: 0 10px 24px rgba(34, 81, 209, 0.08);
 }
 
 .day-cell span {
   width: 26px;
   height: 26px;
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 850;
 }
 
 .day-cell small {
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.68rem;
 }
 
@@ -2201,7 +2077,7 @@ onBeforeUnmount(() => {
 }
 
 .day-cell.is-selected span {
-  background: #fff;
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
 }
@@ -2229,7 +2105,7 @@ onBeforeUnmount(() => {
   width: 76px;
   height: 84px;
   border-color: rgba(148, 163, 184, 0.2);
-  background: rgba(255, 255, 255, 0.74);
+  background: var(--panel-background-raised);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
 }
 
@@ -2242,7 +2118,7 @@ onBeforeUnmount(() => {
 .selected-date-mark span {
   width: 100%;
   overflow: hidden;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.68rem;
   text-align: center;
   text-overflow: ellipsis;
@@ -2293,8 +2169,8 @@ onBeforeUnmount(() => {
   min-height: 412px;
   padding: 42px 24px;
   border: 1px dashed rgba(148, 163, 184, 0.34);
-  background: rgba(248, 250, 252, 0.62) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  background: var(--panel-background-soft) !important;
+  box-shadow: var(--inset-highlight) !important;
 }
 
 .empty-diary::before {
@@ -2306,7 +2182,7 @@ onBeforeUnmount(() => {
   height: 78px;
   margin-bottom: 8px;
   border-color: rgba(148, 163, 184, 0.16);
-  background: #fff;
+  background: var(--overlay-background);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055);
 }
 
@@ -2340,7 +2216,7 @@ onBeforeUnmount(() => {
 
 .day-cell.is-selected {
   border-color: rgba(37, 99, 235, 0.18);
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.94), rgba(255, 255, 255, 0.88));
+  background: var(--control-selected-background);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.74),
     0 10px 20px rgba(37, 99, 235, 0.08);
@@ -2358,7 +2234,7 @@ onBeforeUnmount(() => {
   height: 28px;
   border-radius: 8px;
   background: var(--brand-blue);
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: 0 8px 16px rgba(34, 81, 209, 0.22);
 }
 
@@ -2368,16 +2244,14 @@ onBeforeUnmount(() => {
 }
 
 .day-cell.is-selected small {
-  color: #52637a;
+  color: var(--text-muted);
 }
 
 /* Screenshot restoration: warm diary workspace */
 .diary-page {
   min-height: 100vh;
   min-height: 100svh;
-  background:
-    radial-gradient(circle at 86% 8%, rgba(218, 160, 64, 0.12), transparent 28%),
-    linear-gradient(180deg, rgba(255, 252, 247, 0.92), rgba(250, 244, 235, 0.78));
+  background: var(--app-background);
 }
 
 .diary-stage {
@@ -2414,7 +2288,7 @@ onBeforeUnmount(() => {
 
 .diary-header h1 {
   margin: 0;
-  color: #282521;
+  color: var(--text-primary);
   font-size: clamp(3.6rem, 5.3vw, 5.25rem);
   font-weight: 900;
   line-height: 0.92;
@@ -2427,10 +2301,10 @@ onBeforeUnmount(() => {
   gap: 8px;
   min-height: 44px;
   padding: 0 18px;
-  border: 1px solid rgba(123, 83, 58, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: 9px;
-  background: rgba(255, 250, 241, 0.78);
-  color: #62584f;
+  background: var(--control-background);
+  color: var(--text-secondary);
   font-size: 0.95rem;
   font-weight: 750;
   box-shadow: 0 10px 22px rgba(99, 69, 43, 0.045);
@@ -2445,7 +2319,7 @@ onBeforeUnmount(() => {
 .diary-status-chip,
 .diary-status-chip.is-empty {
   border-color: rgba(171, 91, 58, 0.16);
-  background: rgba(255, 246, 237, 0.84);
+  background: var(--control-selected-background);
   color: var(--brand-blue);
 }
 
@@ -2461,10 +2335,10 @@ onBeforeUnmount(() => {
 .empty-diary :deep(.el-button) {
   min-height: 56px;
   padding-inline: 24px;
-  border: 1px solid rgba(123, 83, 58, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
-  background: rgba(255, 250, 241, 0.78);
-  color: #322f2b;
+  background: var(--control-background);
+  color: var(--text-primary);
   font-size: 0.98rem;
   font-weight: 780;
   box-shadow: 0 12px 24px rgba(99, 69, 43, 0.06);
@@ -2483,7 +2357,7 @@ onBeforeUnmount(() => {
 .glow-action {
   border-color: rgba(150, 70, 38, 0.22) !important;
   background: linear-gradient(180deg, #c46c43, #a84528) !important;
-  color: #fff !important;
+  color: var(--text-on-accent) !important;
   box-shadow: 0 16px 28px rgba(150, 70, 38, 0.2) !important;
 }
 
@@ -2496,14 +2370,10 @@ onBeforeUnmount(() => {
 
 .diary-calendar-panel,
 .diary-reader {
-  border: 1px solid rgba(123, 83, 58, 0.13);
+  border: 1px solid var(--border-soft);
   border-radius: 12px !important;
-  background:
-    linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(255, 248, 239, 0.86)),
-    var(--surface) !important;
-  box-shadow:
-    0 18px 42px rgba(99, 69, 43, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.76) !important;
+  background: var(--panel-background) !important;
+  box-shadow: var(--shadow-soft), var(--inset-highlight) !important;
   backdrop-filter: none;
 }
 
@@ -2525,7 +2395,7 @@ onBeforeUnmount(() => {
 }
 
 .month-toolbar strong {
-  color: #2c2925;
+  color: var(--text-primary);
   font-size: 1.55rem;
   font-weight: 900;
   text-align: center;
@@ -2534,10 +2404,10 @@ onBeforeUnmount(() => {
 .icon-button {
   width: 48px;
   height: 48px;
-  border: 1px solid rgba(123, 83, 58, 0.12);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
-  background: rgba(255, 250, 241, 0.78);
-  color: #2f2c28;
+  background: var(--control-background);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
@@ -2545,9 +2415,9 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 26px;
-  border: 1px solid rgba(123, 83, 58, 0.12);
+  border: 1px solid var(--border-soft);
   border-radius: 9px;
-  background: rgba(255, 250, 241, 0.66);
+  background: var(--panel-background-soft);
   box-shadow: none;
 }
 
@@ -2559,17 +2429,17 @@ onBeforeUnmount(() => {
 }
 
 .calendar-overview span + span {
-  border-left: 1px solid rgba(123, 83, 58, 0.12);
+  border-left: 1px solid var(--divider);
 }
 
 .calendar-overview strong {
-  color: #2d2a26;
+  color: var(--text-primary);
   font-size: 1.65rem;
   font-weight: 900;
 }
 
 .calendar-overview em {
-  color: #6f665e;
+  color: var(--text-muted);
   font-size: 0.82rem;
   font-style: normal;
   font-weight: 700;
@@ -2582,7 +2452,7 @@ onBeforeUnmount(() => {
 }
 
 .weekday-row span {
-  color: #635a52;
+  color: var(--text-muted);
   font-size: 0.86rem;
   font-weight: 850;
   text-align: center;
@@ -2602,7 +2472,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  color: #1f1d1a;
+  color: var(--text-primary);
   box-shadow: none;
 }
 
@@ -2610,7 +2480,7 @@ onBeforeUnmount(() => {
   width: auto;
   height: auto;
   min-width: 30px;
-  color: #201e1b;
+  color: var(--text-primary);
   font-size: 1.05rem;
   font-weight: 900;
   line-height: 1;
@@ -2618,14 +2488,14 @@ onBeforeUnmount(() => {
 
 .day-cell small {
   margin-top: 5px;
-  color: #63775b;
+  color: var(--moss);
   font-size: 0.7rem;
   font-weight: 750;
 }
 
 .day-cell.is-muted span,
 .day-cell.is-muted small {
-  color: #a9a39c;
+  color: var(--text-muted);
 }
 
 .day-cell.is-today {
@@ -2645,7 +2515,7 @@ onBeforeUnmount(() => {
 .day-cell.is-selected:hover {
   border-color: rgba(150, 70, 38, 0.2);
   background: linear-gradient(180deg, #c46c43, #a84528);
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: 0 14px 24px rgba(150, 70, 38, 0.22);
   transform: none;
 }
@@ -2656,12 +2526,12 @@ onBeforeUnmount(() => {
   min-width: 30px;
   border-radius: 0;
   background: transparent;
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: none;
 }
 
 .day-cell.is-selected small {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--text-on-accent);
 }
 
 .day-cell.is-selected span::before,
@@ -2687,10 +2557,10 @@ onBeforeUnmount(() => {
 .selected-date-mark {
   width: 104px;
   height: 116px;
-  border: 1px solid rgba(123, 83, 58, 0.13);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
-  background: rgba(255, 250, 241, 0.86);
-  box-shadow: 0 14px 26px rgba(99, 69, 43, 0.08);
+  background: var(--panel-background-raised);
+  box-shadow: var(--shadow-subtle);
 }
 
 .selected-date-mark::after {
@@ -2698,7 +2568,7 @@ onBeforeUnmount(() => {
 }
 
 .selected-date-mark span {
-  color: #665d55;
+  color: var(--text-muted);
   font-size: 0.74rem;
   font-weight: 850;
 }
@@ -2722,7 +2592,7 @@ onBeforeUnmount(() => {
 
 .reader-heading h2 {
   margin: 0;
-  color: #2b2925;
+  color: var(--text-primary);
   font-size: clamp(2rem, 2.7vw, 2.6rem);
   font-weight: 900;
 }
@@ -2730,7 +2600,7 @@ onBeforeUnmount(() => {
 .reader-heading-copy > span {
   display: block;
   margin-top: 8px;
-  color: #71675e;
+  color: var(--text-muted);
   font-size: 1rem;
   font-weight: 700;
 }
@@ -2747,7 +2617,7 @@ onBeforeUnmount(() => {
   padding: 44px 28px;
   border: 1px dashed rgba(171, 91, 58, 0.24);
   border-radius: 10px;
-  background: rgba(255, 250, 241, 0.48) !important;
+  background: var(--panel-background-soft) !important;
   box-shadow: none !important;
 }
 
@@ -2772,15 +2642,15 @@ onBeforeUnmount(() => {
   height: 40px;
   margin: 0 0 18px;
   padding: 0 22px;
-  border: 1px solid rgba(123, 83, 58, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
-  background: rgba(255, 250, 241, 0.84);
-  color: #75614f;
-  box-shadow: 0 10px 22px rgba(99, 69, 43, 0.05);
+  background: var(--control-background);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-subtle);
 }
 
 .empty-diary-mark span {
-  color: #75614f;
+  color: var(--text-secondary);
   font-size: 1rem;
   font-weight: 780;
 }
@@ -2791,7 +2661,7 @@ onBeforeUnmount(() => {
 
 .empty-diary h2 {
   margin: 0 0 26px;
-  color: #2b2925;
+  color: var(--text-primary);
   font-size: clamp(2rem, 3.2vw, 2.8rem);
   font-weight: 900;
 }
@@ -2803,6 +2673,10 @@ onBeforeUnmount(() => {
 
 .typewriter-title span::after {
   display: none;
+}
+
+.diary-header-actions :deep(.el-button:not(.el-button--primary)) {
+  box-shadow: var(--shadow-subtle);
 }
 
 @media (max-width: 1320px) {

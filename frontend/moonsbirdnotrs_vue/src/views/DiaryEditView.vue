@@ -1693,7 +1693,7 @@ onBeforeUnmount(() => {
   height: 36px;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
@@ -1865,7 +1865,7 @@ onBeforeUnmount(() => {
   padding: 0 11px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
@@ -1880,11 +1880,11 @@ onBeforeUnmount(() => {
 .toolbar-chip:hover {
   transform: translateY(-1px);
   border-color: rgba(37, 99, 235, 0.2);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.12), rgba(255, 255, 255, 0.82));
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   box-shadow:
     0 10px 20px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    var(--inset-highlight);
 }
 
 .toolbar-button:active,
@@ -1973,8 +1973,8 @@ onBeforeUnmount(() => {
   padding: 5px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+  background: var(--overlay-background);
+  box-shadow: var(--shadow-soft);
   backdrop-filter: blur(12px);
 }
 
@@ -2001,12 +2001,12 @@ onBeforeUnmount(() => {
 }
 
 .editor-image-toolbar button.danger {
-  color: #b42318;
+  color: var(--danger);
 }
 
 .editor-image-toolbar button.danger:hover {
   background: rgba(180, 35, 24, 0.08);
-  color: #991b1b;
+  color: var(--danger);
 }
 
 .diary-editor-root {
@@ -2099,6 +2099,16 @@ onBeforeUnmount(() => {
 .diary-editor-root :deep(.toastui-editor-contents .toastui-editor-ww-code-block) {
   max-width: 100%;
   overflow-x: hidden;
+  border: 1px solid var(--table-border);
+  border-radius: 18px;
+  background: var(--code-background) !important;
+  color: var(--code-text) !important;
+}
+
+.diary-editor-root :deep(.toastui-editor-contents pre code),
+.diary-editor-root :deep(.toastui-editor-contents .toastui-editor-ww-code-block code) {
+  background: transparent !important;
+  color: inherit !important;
 }
 
 .diary-editor-root :deep(.toastui-editor-contents blockquote) {
@@ -2106,7 +2116,7 @@ onBeforeUnmount(() => {
   padding: 18px 20px;
   border-left-color: var(--brand-blue);
   border-radius: 0 18px 18px 0;
-  background: rgba(37, 99, 235, 0.06);
+  background: var(--quote-background);
   color: var(--ink-soft);
 }
 

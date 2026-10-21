@@ -450,7 +450,7 @@ onMounted(() => {
 .trash-brand,
 .board-kicker {
   margin: 0 0 12px;
-  color: #dc2626;
+  color: var(--danger);
   font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -459,7 +459,7 @@ onMounted(() => {
 
 .trash-header h1 {
   margin: 0;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: clamp(2.5rem, 4vw, 4.9rem);
   line-height: 0.96;
   letter-spacing: -0.07em;
@@ -468,7 +468,7 @@ onMounted(() => {
 .trash-subtitle {
   max-width: 620px;
   margin: 18px 0 0;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.9;
 }
 
@@ -491,14 +491,14 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: var(--radius-md);
   background: rgba(220, 38, 38, 0.08);
-  color: #b91c1c;
+  color: var(--danger);
   font-size: 0.9rem;
   font-weight: 700;
 }
 
 .status-panel p {
   margin: 0;
-  color: #7f1d1d;
+  color: var(--danger);
   line-height: 1.75;
 }
 
@@ -520,7 +520,7 @@ onMounted(() => {
 
 .board-title h2 {
   margin: 0;
-  color: #111827;
+  color: var(--text-primary);
   font-size: 1.9rem;
   line-height: 1.04;
   letter-spacing: -0.05em;
@@ -536,10 +536,10 @@ onMounted(() => {
 .batch-mode-toggle {
   min-height: 40px;
   padding-inline: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #111827;
+  background: var(--control-background);
+  color: var(--text-primary);
   font-weight: 800;
 }
 
@@ -581,7 +581,7 @@ onMounted(() => {
 }
 
 .batch-selection-info span {
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 800;
 }
 
@@ -594,7 +594,7 @@ onMounted(() => {
 
 .batch-clear-button {
   border-color: rgba(148, 163, 184, 0.24);
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .batch-restore-button {
@@ -616,20 +616,20 @@ onMounted(() => {
 .summary-card {
   min-width: 114px;
   padding: 12px 14px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--panel-background-raised);
 }
 
 .summary-card span {
   display: block;
   margin-bottom: 8px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.8rem;
 }
 
 .summary-card strong {
-  color: #111827;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
@@ -715,7 +715,7 @@ onMounted(() => {
 
 .row-head h3 {
   margin: 0;
-  color: #111827;
+  color: var(--text-primary);
   font-size: 1.18rem;
   line-height: 1.25;
   letter-spacing: -0.03em;
@@ -727,14 +727,14 @@ onMounted(() => {
   padding: 4px 10px;
   border-radius: var(--radius-md);
   background: rgba(220, 38, 38, 0.08);
-  color: #b91c1c;
+  color: var(--danger);
   font-size: 0.76rem;
   font-weight: 700;
 }
 
 .row-excerpt {
   margin: 10px 0 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.75;
 }
@@ -744,7 +744,7 @@ onMounted(() => {
   gap: 18px;
   flex-wrap: wrap;
   margin-top: 14px;
-  color: #9ca3af;
+  color: var(--text-muted);
   font-size: 0.86rem;
 }
 
@@ -783,7 +783,7 @@ onMounted(() => {
   padding: 7px 12px;
   border-radius: 999px;
   background: rgba(16, 185, 129, 0.1);
-  color: #047857;
+  color: var(--moss);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -792,13 +792,13 @@ onMounted(() => {
 
 .empty-state h3 {
   margin: 0;
-  color: #111827;
+  color: var(--text-primary);
   font-size: 1.4rem;
 }
 
 .empty-state p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.8;
 }
 

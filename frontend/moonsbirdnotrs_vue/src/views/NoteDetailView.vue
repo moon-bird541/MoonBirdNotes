@@ -11,6 +11,7 @@ import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
 import { EDITOR_SETTINGS_CHANGE_EVENT, getEditorSettings } from '../utils/editorSettings'
 import { exportNoteFile, getNoteExportErrorDetail } from '../utils/noteExport'
+import { enhanceRichContent } from '../utils/richContent'
 import { applyTableLayoutsToTables, extractTableLayoutMetadata } from '../utils/tableLayout'
 import '../styles/markdown.css'
 
@@ -112,6 +113,8 @@ const renderViewerContent = () => {
   const scheduleViewerTableLayouts = () => {
     window.requestAnimationFrame(() => {
       applyViewerTableLayouts()
+      // 表格布局应用完再增强，避免公式/提示框改变布局后表格被重排
+      enhanceRichContent(articleViewer.value)
       window.requestAnimationFrame(applyViewerTableLayouts)
     })
   }
@@ -219,7 +222,7 @@ onBeforeUnmount(() => {
                 </button>
               </div>
 
-              <div ref="articleViewer" class="article-content detail-viewer"></div>
+              <div ref="articleViewer" class="article-content detail-viewer blog-prose"></div>
             </article>
 
             <aside v-show="!readerMetaCollapsed" class="reader-meta">
@@ -320,9 +323,9 @@ onBeforeUnmount(() => {
   gap: 8px;
   min-height: 42px;
   padding: 0 14px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
@@ -333,8 +336,8 @@ onBeforeUnmount(() => {
 
 .back-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.24);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-subtle);
 }
 
 .edit-button {
@@ -349,17 +352,17 @@ onBeforeUnmount(() => {
 .export-button {
   min-height: 42px;
   padding-inline: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--control-background);
   color: var(--brand-navy);
   font-weight: 700;
 }
 
 .export-button:hover,
 .export-button:focus {
-  border-color: rgba(37, 99, 235, 0.26);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
   color: var(--brand-blue);
 }
 
@@ -397,7 +400,7 @@ onBeforeUnmount(() => {
   min-height: 32px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--accent-soft);
   color: var(--brand-blue);
   font-size: 0.86rem;
   font-weight: 700;
@@ -418,9 +421,9 @@ onBeforeUnmount(() => {
 .reader-main {
   min-width: 0;
   padding: 30px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  background: var(--surface);
+  background: var(--panel-background);
   box-shadow: var(--shadow-soft);
 }
 
@@ -430,7 +433,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 22px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid var(--divider);
 }
 
 .article-toolbar p {
@@ -452,9 +455,9 @@ onBeforeUnmount(() => {
   gap: 8px;
   min-height: 38px;
   padding: 0 12px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--control-background);
   color: var(--brand-navy);
   font-size: 0.84rem;
   font-weight: 700;
@@ -470,10 +473,10 @@ onBeforeUnmount(() => {
 .reader-meta-toggle:hover,
 .reader-meta-toggle:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
   color: var(--brand-blue);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-subtle);
   outline: none;
 }
 
@@ -485,127 +488,26 @@ onBeforeUnmount(() => {
   margin-top: 28px;
 }
 
+/* 阅读区排版统一由全局 styles/blog-prose.css 提供（对齐博客），
+   这里只保留 toast-ui 结构相关的必要修正。 */
 .detail-viewer :deep(.toastui-editor-contents) {
   max-width: 100%;
   overflow-x: hidden;
-  color: var(--brand-navy);
   font-size: var(--reader-font-size, 1rem);
-  line-height: 1.95;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  font-family: inherit;
 }
 
-.detail-viewer :deep(.toastui-editor-contents pre),
-.detail-viewer :deep(.toastui-editor-contents code),
-.detail-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block),
-.detail-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block code) {
-  font-family: 'Cascadia Code', 'Consolas', monospace;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.detail-viewer :deep(.toastui-editor-contents pre),
-.detail-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block) {
-  max-width: 100%;
-  overflow-x: hidden;
-  white-space: pre-wrap;
-}
-
-.detail-viewer :deep(.toastui-editor-contents p),
-.detail-viewer :deep(.toastui-editor-contents li),
-.detail-viewer :deep(.toastui-editor-contents blockquote) {
-  color: var(--brand-navy);
-}
-
-.detail-viewer :deep(.toastui-editor-contents h1),
-.detail-viewer :deep(.toastui-editor-contents h2),
-.detail-viewer :deep(.toastui-editor-contents h3),
-.detail-viewer :deep(.toastui-editor-contents h4),
-.detail-viewer :deep(.toastui-editor-contents h5),
-.detail-viewer :deep(.toastui-editor-contents h6) {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.detail-viewer :deep(.toastui-editor-contents em),
-.detail-viewer :deep(.toastui-editor-contents i) {
-  display: inline-block;
-  font-style: oblique 12deg;
-  transform: skewX(-8deg);
-  transform-origin: center bottom;
-}
-
-.detail-viewer :deep(.toastui-editor-contents blockquote) {
-  border-left-color: var(--brand-blue);
-}
-
-.detail-viewer :deep(.toastui-editor-contents table) {
-  width: 100%;
-  inline-size: 100%;
-  max-width: 100%;
-  max-inline-size: 100%;
-  min-width: 0;
-  min-inline-size: 0;
-  margin: 18px 0;
-  border: 1px solid rgba(100, 116, 139, 0.42) !important;
-  border-collapse: collapse;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.8) !important;
-  box-shadow: inset 0 0 0 1px rgba(100, 116, 139, 0.18);
-  table-layout: fixed;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.detail-viewer :deep(.toastui-editor-contents thead th) {
-  background: rgba(15, 23, 42, 0.07) !important;
-}
-
-.detail-viewer :deep(.toastui-editor-contents th),
-.detail-viewer :deep(.toastui-editor-contents td) {
-  min-width: 0;
-  max-width: 0;
-  padding: 12px 14px !important;
-  border-right: 1px solid rgba(100, 116, 139, 0.36) !important;
-  border-bottom: 1px solid rgba(100, 116, 139, 0.36) !important;
-  background: transparent;
-  color: var(--brand-navy);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  vertical-align: top;
-}
-
+/* toast-ui 为表格布局生成的辅助列，不应展示 */
 .detail-viewer :deep(.toastui-editor-contents th[extended]),
 .detail-viewer :deep(.toastui-editor-contents td[extended]) {
   display: none;
 }
 
-.detail-viewer :deep(.toastui-editor-contents th:not([align])),
-.detail-viewer :deep(.toastui-editor-contents td:not([align])) {
-  text-align: left;
-}
-
-.detail-viewer :deep(.toastui-editor-contents th:last-child),
-.detail-viewer :deep(.toastui-editor-contents td:last-child) {
-  border-right: none !important;
-}
-
-.detail-viewer :deep(.toastui-editor-contents tr:last-child td) {
-  border-bottom: none !important;
-}
-
-.detail-viewer :deep(.toastui-editor-contents pre) {
-  margin: 18px 0 14px;
-  border-radius: 20px;
-}
-
-.detail-viewer :deep(.toastui-editor-contents :not(pre) > code) {
-  padding: 0.16em 0.5em;
-  border-radius: 10px;
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--brand-blue);
+/* toast-ui 的所见即所得代码块自带内边距，交由 blog-prose 统一外观 */
+.detail-viewer :deep(.toastui-editor-contents .toastui-editor-ww-code-block pre) {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .reader-meta {
@@ -618,15 +520,15 @@ onBeforeUnmount(() => {
 
 .reader-meta-toggle-hide {
   width: 100%;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--control-background);
 }
 
 .meta-block,
 .meta-line {
   padding: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--panel-background-soft);
 }
 
 .meta-block {
@@ -769,19 +671,17 @@ onBeforeUnmount(() => {
 .export-dropdown-popper {
   min-width: 172px !important;
   padding: 8px !important;
-  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  border: 1px solid var(--border-soft) !important;
   border-radius: 18px !important;
-  background: rgba(255, 255, 255, 0.98) !important;
-  box-shadow:
-    0 18px 44px rgba(15, 23, 42, 0.14),
-    0 0 0 1px rgba(255, 255, 255, 0.72) inset !important;
+  background: var(--overlay-background) !important;
+  box-shadow: var(--shadow-soft), var(--inset-highlight) !important;
   backdrop-filter: blur(18px) !important;
   overflow: visible !important;
 }
 
 .export-dropdown-popper .el-popper__arrow::before {
-  border-color: rgba(255, 255, 255, 0.98) !important;
-  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: var(--overlay-background) !important;
+  background: var(--overlay-background) !important;
 }
 
 .export-dropdown-popper .el-dropdown-menu,
@@ -800,7 +700,7 @@ onBeforeUnmount(() => {
   margin: 2px 0 !important;
   padding: 0 12px !important;
   border-radius: 12px !important;
-  color: #0f172a !important;
+  color: var(--text-primary) !important;
   font-size: 0.95rem !important;
   font-weight: 700 !important;
   transition:

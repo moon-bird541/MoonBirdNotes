@@ -68,8 +68,8 @@ const formatTime = (value) => {
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   padding: 26px 18px 22px;
-  border-right: 1px solid rgba(76, 67, 53, 0.11);
-  background: rgba(255, 251, 244, 0.38);
+  border-right: 1px solid var(--border-soft);
+  background: var(--panel-background-soft);
   overflow: hidden;
 }
 
@@ -136,7 +136,7 @@ const formatTime = (value) => {
 .history-item:hover,
 .history-item.is-active {
   padding-left: 14px;
-  background: rgba(255, 248, 237, 0.78);
+  background: var(--control-selected-background);
 }
 
 .history-item.is-active {
@@ -194,7 +194,7 @@ const formatTime = (value) => {
 
 .history-delete:hover {
   background: rgba(150, 67, 50, 0.1);
-  color: #984b3d;
+  color: var(--danger);
 }
 
 @media (max-width: 900px) {

@@ -47,7 +47,7 @@ defineEmits(['back', 'save'])
   padding: 16px 20px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--panel-background-raised);
   box-shadow: var(--shadow-soft);
 }
 
@@ -60,7 +60,7 @@ defineEmits(['back', 'save'])
   padding: 0 14px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:

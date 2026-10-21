@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -2907,6 +2907,50 @@ const insertFixedToolbarLink = (payload) => {
   runFixedToolbarCommand('addLink', payload)
 }
 
+/**
+ * 插入一段 Markdown 片段。
+ * 公式与提示框是 toast-ui 不认识的扩展语法，无法用 exec 命令插入，
+ * 因此直接在光标处写入文本，选中内容会被包裹其中。
+ */
+const insertMarkdownSnippet = (before, after = '', placeholder = '') => {
+  const view = getWysiwygView()
+  if (!view || !editorInstance) {
+    return
+  }
+
+  restoreInsertionSelection()
+
+  const { state } = view
+  const { from, to } = state.selection
+  const selected = state.doc.textBetween(from, to, '\n')
+  const body = selected || placeholder
+  const text = `${before}${body}${after}`
+
+  const tr = state.tr.insertText(text, from, to)
+  // 选中占位文本，方便直接输入覆盖
+  if (!selected && placeholder) {
+    const placeholderStart = from + before.length
+    tr.setSelection(TextSelection.create(tr.doc, placeholderStart, placeholderStart + placeholder.length))
+  }
+  tr.scrollIntoView()
+  view.dispatch(tr)
+
+  syncAfterFixedToolbarCommand()
+}
+
+const insertFixedToolbarMath = (displayMode) => {
+  if (displayMode) {
+    insertMarkdownSnippet('$$\n', '\n$$', 'E = mc^2')
+    return
+  }
+  insertMarkdownSnippet('$', '$', 'x^2')
+}
+
+const insertFixedToolbarCallout = (kind = 'note') => {
+  const label = kind.toUpperCase()
+  insertMarkdownSnippet(`> [!${label}]\n> `, '', '提示内容')
+}
+
 const resolveTableInfoFromCell = (cellElement) => {
   const view = getWysiwygView()
   const rowElement = cellElement?.closest?.('tr')
@@ -5750,10 +5794,18 @@ onBeforeUnmount(() => {
                   @insert-link="insertFixedToolbarLink"
                   @insert-image="triggerEditorImageUpload"
                   @insert-table="applyTable"
+                  @insert-math="insertFixedToolbarMath"
+                  @insert-callout="insertFixedToolbarCallout"
                 />
+                <!--
+                  注意：auto-height 是 Toast UI 在 setHeight('auto') 时动态加到根节点上的类，
+                  一旦 Vue 因为 is-editor-empty 之类的动态 class 变化重写 className 就会把它抹掉，
+                  导致 .toastui-editor-main 被压成 2px、整块编辑区不可见（空笔记输入第一个字即触发）。
+                  因此这里把它写进静态 class，让 Vue 每次 patch 都保留它。
+                -->
                 <div
                   ref="editorRoot"
-                  class="wysiwyg-editor"
+                  class="wysiwyg-editor blog-prose auto-height"
                   :class="{ 'is-editor-empty': !currentMarkdown.trim() }"
                   :data-placeholder="editorPlaceholder"
                 ></div>
@@ -5925,8 +5977,9 @@ onBeforeUnmount(() => {
   z-index: 1;
   top: 22px;
   left: 24px;
-  color: #94a3b8;
-  line-height: 1.95;
+  color: var(--text-muted);
+  /* 与 blog-prose 正文行高一致，避免空编辑器时占位文字与输入后错位 */
+  line-height: 1.75;
   pointer-events: none;
   content: attr(data-placeholder);
 }
@@ -5942,7 +5995,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   align-items: center;
   padding: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow-soft);
@@ -6000,9 +6053,9 @@ onBeforeUnmount(() => {
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border-soft);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--panel-background);
 }
 
 .wysiwyg-editor :deep(.toastui-editor-main-container) {
@@ -6021,102 +6074,19 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
+/* 编辑区排版统一由全局 styles/blog-prose.css 提供（与阅读端一致），
+   这里只保留编辑器结构、字号设置与交互状态相关的规则。 */
 .wysiwyg-editor :deep(.toastui-editor-contents) {
   min-height: 520px;
   max-width: 100%;
   overflow-x: hidden;
   padding: 22px 24px;
-  color: var(--brand-navy);
+  /* 编辑器有自己的字号设置，优先级高于 blog-prose 的阅读字号 */
   font-size: var(--editor-font-size, 1rem);
-  line-height: 1.95;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  font-family: inherit;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents pre),
-.wysiwyg-editor :deep(.toastui-editor-contents code),
-.wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block),
-.wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block code) {
-  font-family: 'Cascadia Code', 'Consolas', monospace;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents pre),
-.wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block) {
-  max-width: 100%;
-  overflow-x: hidden;
-  white-space: pre-wrap;
 }
 
 .wysiwyg-editor :deep(.toastui-editor-contents :not(pre) > code) {
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents p),
-.wysiwyg-editor :deep(.toastui-editor-contents li),
-.wysiwyg-editor :deep(.toastui-editor-contents blockquote) {
-  color: var(--brand-navy);
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents h1),
-.wysiwyg-editor :deep(.toastui-editor-contents h2),
-.wysiwyg-editor :deep(.toastui-editor-contents h3),
-.wysiwyg-editor :deep(.toastui-editor-contents h4),
-.wysiwyg-editor :deep(.toastui-editor-contents h5),
-.wysiwyg-editor :deep(.toastui-editor-contents h6) {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents em),
-.wysiwyg-editor :deep(.toastui-editor-contents i) {
-  display: inline-block;
-  font-style: oblique 12deg;
-  transform: skewX(-8deg);
-  transform-origin: center bottom;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents blockquote) {
-  border-left-color: var(--brand-blue);
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents table) {
-  width: 100%;
-  inline-size: 100%;
-  max-width: 100%;
-  max-inline-size: 100%;
-  min-width: 0;
-  min-inline-size: 0;
-  margin: 18px 0;
-  border: 1px solid rgba(100, 116, 139, 0.42);
-  border-collapse: collapse;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(100, 116, 139, 0.18);
-  table-layout: fixed;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents thead th) {
-  background: rgba(15, 23, 42, 0.07);
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents th),
-.wysiwyg-editor :deep(.toastui-editor-contents td) {
-  min-width: 0;
-  max-width: 0;
-  padding: 12px 14px;
-  border-right: 1px solid rgba(100, 116, 139, 0.36);
-  border-bottom: 1px solid rgba(100, 116, 139, 0.36);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  vertical-align: top;
 }
 
 .wysiwyg-editor :deep(.toastui-editor-contents th[extended]),
@@ -6144,7 +6114,7 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 0 0 9999px rgba(191, 219, 254, 0.18),
     inset 0 0 0 1px rgba(37, 99, 235, 0.34);
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .wysiwyg-editor :deep(.toastui-editor-contents th.toastui-editor-cell-selected *),
@@ -6155,23 +6125,19 @@ onBeforeUnmount(() => {
   color: inherit !important;
 }
 
-.wysiwyg-editor :deep(.toastui-editor-contents th:last-child),
-.wysiwyg-editor :deep(.toastui-editor-contents td:last-child) {
-  border-right: none;
-}
-
-.wysiwyg-editor :deep(.toastui-editor-contents tr:last-child td) {
-  border-bottom: none;
-}
-
+/* toast-ui 代码块外壳：定位与交互控件保留，外观交由 blog-prose */
 .wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block) {
   position: relative;
-  margin: 18px 0 14px;
-  border-radius: 20px;
 }
 
 .wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block pre) {
-  border-radius: 20px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent !important;
+  /* 必须显式取浅色文字：pre 若用 inherit 会继承到外层的深色正文，
+     在深色代码底上形成“黑框”而看不见内容 */
+  color: var(--code-text) !important;
 }
 
 .wysiwyg-editor :deep(.toastui-editor-contents .toastui-editor-ww-code-block:after) {
@@ -6192,10 +6158,10 @@ onBeforeUnmount(() => {
   max-width: min(132px, calc(100% - 28px));
   height: 30px;
   padding: 0 12px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--table-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  background: var(--overlay-background);
+  box-shadow: var(--shadow-subtle);
   color: var(--brand-navy);
   font-size: 0.78rem;
   font-weight: 700;
@@ -6209,7 +6175,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   cursor: text;
   transition:
     border-color 0.18s ease,
@@ -6218,8 +6184,8 @@ onBeforeUnmount(() => {
 }
 
 .wysiwyg-editor :deep(.inline-code-language-chip:hover) {
-  border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(255, 255, 255, 0.98);
+  border-color: var(--accent-border);
+  background: var(--control-hover-background);
   box-shadow:
     0 12px 24px rgba(15, 23, 42, 0.08),
     0 0 0 3px rgba(37, 99, 235, 0.08);
@@ -6231,8 +6197,8 @@ onBeforeUnmount(() => {
 }
 
 .wysiwyg-editor :deep(.inline-code-language-input:focus) {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: #ffffff;
+  border-color: var(--accent-border);
+  background: var(--control-background);
   box-shadow:
     0 12px 24px rgba(15, 23, 42, 0.08),
     0 0 0 3px rgba(37, 99, 235, 0.12);

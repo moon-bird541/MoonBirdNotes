@@ -166,17 +166,14 @@ onBeforeUnmount(() => {
   min-height: 100vh;
   min-height: 100svh;
   padding: 28px 22px 26px;
-  border-right: 1px solid rgba(123, 83, 58, 0.12);
-  background:
-    radial-gradient(circle at 46% 64%, rgba(209, 171, 118, 0.1), transparent 30%),
-    linear-gradient(180deg, rgba(255, 250, 241, 0.96), rgba(247, 238, 222, 0.88)),
-    var(--surface);
+  border-right: 1px solid var(--border-soft);
+  background: var(--sidebar-background);
   backdrop-filter: blur(18px) saturate(0.92);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(101, 119, 99, 0.35) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
   transition:
     width 0.24s var(--motion-snappy),
     padding 0.24s var(--motion-snappy);
@@ -189,7 +186,7 @@ onBeforeUnmount(() => {
 
 .workspace-sidebar::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(101, 119, 99, 0.3);
+  background: var(--scrollbar-thumb);
 }
 
 .workspace-sidebar::after {
@@ -293,7 +290,7 @@ onBeforeUnmount(() => {
   height: 40px;
   border: 1px solid var(--border-soft);
   border-radius: 10px;
-  background: rgba(255, 250, 241, 0.76);
+  background: var(--control-background);
   color: var(--brand-navy);
   cursor: pointer;
   transition:
@@ -307,7 +304,7 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
   border-color: var(--accent-border);
   background: var(--accent-soft);
-  box-shadow: 0 10px 24px rgba(42, 33, 23, 0.08);
+  box-shadow: var(--shadow-subtle);
 }
 
 .collapse-button.is-collapsed {
@@ -316,7 +313,7 @@ onBeforeUnmount(() => {
   border-color: var(--accent-border);
   background: var(--surface);
   color: var(--brand-blue);
-  box-shadow: 0 10px 24px rgba(42, 33, 23, 0.06);
+  box-shadow: var(--shadow-subtle);
 }
 
 .sidebar-nav {
@@ -334,7 +331,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
-  color: #425645;
+  color: var(--moss);
   text-align: left;
   cursor: pointer;
   transition:
@@ -356,11 +353,11 @@ onBeforeUnmount(() => {
 }
 
 .nav-item.is-active {
-  border-color: rgba(171, 91, 58, 0.18);
-  background: linear-gradient(180deg, rgba(255, 246, 237, 0.95), rgba(249, 232, 216, 0.86));
+  border-color: var(--accent-border);
+  background: var(--control-selected-background);
   color: var(--brand-blue);
   font-weight: 700;
-  box-shadow: 0 10px 22px rgba(117, 79, 52, 0.06);
+  box-shadow: var(--shadow-subtle);
 }
 
 .nav-item span:last-child {
@@ -414,15 +411,15 @@ onBeforeUnmount(() => {
   gap: 9px;
   min-height: 58px;
   padding: 0 18px;
-  border: 1px solid rgba(123, 83, 58, 0.13);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
-  background: rgba(255, 250, 241, 0.76);
-  color: #2f3430;
+  background: var(--control-background);
+  color: var(--text-secondary);
   font: inherit;
   font-weight: 700;
   letter-spacing: -0.01em;
   cursor: pointer;
-  box-shadow: 0 10px 22px rgba(117, 79, 52, 0.04);
+  box-shadow: var(--shadow-subtle);
   transition:
     transform 0.2s var(--motion-snappy),
     border-color 0.2s var(--motion-calm),

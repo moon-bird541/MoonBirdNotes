@@ -125,9 +125,9 @@ const isTablePickerCellActive = (rows, columns) =>
   justify-content: center;
   min-width: 72px;
   padding: 14px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+  background: var(--overlay-background);
   box-shadow:
     0 12px 32px rgba(15, 23, 42, 0.12),
     0 4px 12px rgba(37, 99, 235, 0.08),
@@ -232,7 +232,7 @@ const isTablePickerCellActive = (rows, columns) =>
   padding: 0;
   border: 1px solid rgba(15, 23, 42, 0.72);
   border-radius: 0;
-  background: #ffffff;
+  background: var(--table-background);
   cursor: pointer;
   transition:
     background-color 0.12s ease,
@@ -240,8 +240,8 @@ const isTablePickerCellActive = (rows, columns) =>
 }
 
 .side-table-picker-cell.is-active {
-  border-color: rgba(15, 23, 42, 0.84);
-  background: #f2b385;
+  border-color: var(--accent-border);
+  background: var(--control-selected-background);
 }
 
 .side-table-picker-cell:focus-visible {

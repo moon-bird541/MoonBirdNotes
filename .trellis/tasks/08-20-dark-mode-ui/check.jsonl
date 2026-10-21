@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/frontend/design-system.md", "reason": "Review palette, hierarchy, motion, and responsive compliance"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Review required build, E2E, and visual checks"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Review scoped CSS and third-party selector boundaries"}
+{"file": ".trellis/tasks/08-20-dark-mode-ui/research/theme-audit.md", "reason": "Compare implementation against audited root causes"}

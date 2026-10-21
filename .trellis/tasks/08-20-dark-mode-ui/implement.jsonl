@@ -1,0 +1,6 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend pre-development checklist and project commands"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Scoped styling and component ownership rules"}
+{"file": ".trellis/spec/frontend/design-system.md", "reason": "MoonBird color, hierarchy, motion, and responsive conventions"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Required build and Playwright verification"}
+{"file": ".trellis/tasks/08-20-dark-mode-ui/research/theme-audit.md", "reason": "Evidence for dark-theme root causes and affected surfaces"}

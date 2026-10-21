@@ -131,8 +131,8 @@ defineEmits(['open-action-panel', 'start-resize'])
   padding: 0 10px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  background: var(--overlay-background);
+  box-shadow: var(--shadow-soft);
   color: var(--brand-navy);
   font-size: 0.75rem;
   font-weight: 700;
@@ -153,7 +153,7 @@ defineEmits(['open-action-panel', 'start-resize'])
   padding: 0;
   border: 1px solid rgba(37, 99, 235, 0.24);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--overlay-background);
   box-shadow:
     0 12px 28px rgba(15, 23, 42, 0.14),
     0 0 0 3px rgba(37, 99, 235, 0.08);
@@ -171,7 +171,7 @@ defineEmits(['open-action-panel', 'start-resize'])
 .table-hover-control:focus-visible {
   transform: translateY(-1px);
   border-color: rgba(37, 99, 235, 0.38);
-  background: #ffffff;
+  background: var(--control-selected-background);
   box-shadow:
     0 16px 34px rgba(15, 23, 42, 0.18),
     0 0 0 4px rgba(37, 99, 235, 0.12);
@@ -253,8 +253,8 @@ defineEmits(['open-action-panel', 'start-resize'])
   height: 36px;
   border: 1px solid rgba(15, 23, 42, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  background: var(--overlay-background);
+  box-shadow: var(--shadow-subtle);
   content: '';
   transform: translateY(-50%);
 }
@@ -289,8 +289,8 @@ defineEmits(['open-action-panel', 'start-resize'])
   height: 12px;
   border: 1px solid rgba(15, 23, 42, 0.16);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  background: var(--overlay-background);
+  box-shadow: var(--shadow-subtle);
   content: '';
   transform: translateX(-50%);
 }
@@ -310,7 +310,7 @@ defineEmits(['open-action-panel', 'start-resize'])
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.9);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.2);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 28px;

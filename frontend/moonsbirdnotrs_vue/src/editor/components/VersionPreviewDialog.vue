@@ -43,7 +43,7 @@ const dialogVisible = computed({
           备注：{{ version.note_text }}
         </p>
       </div>
-      <div class="version-preview-content markdown-body" v-html="version.rendered_html"></div>
+      <div class="version-preview-content markdown-body blog-prose" v-html="version.rendered_html"></div>
     </template>
 
     <template #footer>
@@ -95,6 +95,6 @@ const dialogVisible = computed({
   padding: 20px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.5);
+  background: var(--panel-background-soft);
 }
 </style>

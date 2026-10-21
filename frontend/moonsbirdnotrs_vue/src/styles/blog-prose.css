@@ -1,0 +1,394 @@
+/*
+ * 博客风格排版（blog-prose）
+ * ---------------------------------------------------------------------------
+ * 移植自 Firefly 博客的 Tailwind Typography（prose-base）与 markdown.css。
+ * 排版结构、字号阶梯、间距节奏与博客对齐；配色映射到本项目既有的暖色纸感
+ * 变量体系，因此明暗主题自动生效，也不引入被设计规范禁止的 Tailwind 色板。
+ *
+ * 挂载方式：给阅读容器加 class="blog-prose"。
+ * 两种内容结构都能命中——
+ *   .blog-prose > …（后端 rendered_html 直接作为子元素）
+ *   .blog-prose .toastui-editor-contents > …（toast-ui Viewer 生成）
+ */
+
+/* ── 根容器与基础排版 ─────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) {
+	color: var(--brand-navy);
+	font-size: var(--reader-font-size, 1rem);
+	line-height: 1.75;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ── 标题 ─────────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) h1 {
+	margin: 0 0 0.8889em;
+	font-size: 1.875rem;
+	font-weight: 800;
+	line-height: 1.2;
+	color: var(--brand-navy);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) h2 {
+	margin: 2em 0 1em;
+	font-size: 1.5rem;
+	font-weight: 700;
+	line-height: 1.3333;
+	color: var(--brand-navy);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) h3 {
+	margin: 1.6em 0 0.6em;
+	font-size: 1.25rem;
+	font-weight: 600;
+	line-height: 1.6;
+	color: var(--brand-navy);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) h4 {
+	margin: 1.5em 0 0.5em;
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.5;
+	color: var(--brand-navy);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) h5,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) h6 {
+	margin: 1.5em 0 0.5em;
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.5;
+	color: var(--brand-navy);
+}
+
+/* toast-ui 默认给标题加了下边框，去掉以对齐博客 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) :is(h1, h2, h3, h4, h5, h6) {
+	border-bottom: none;
+	padding-bottom: 0;
+	letter-spacing: 0;
+	scroll-margin-top: 5.5rem;
+}
+
+/* ── 段落与文本 ───────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) p {
+	margin: 1.25em 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) strong {
+	font-weight: 600;
+	color: var(--brand-navy);
+}
+
+/* 保留项目原有的斜体倾斜笔触 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) em,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) i {
+	display: inline-block;
+	font-style: oblique 12deg;
+	transform: skewX(-8deg);
+	transform-origin: center bottom;
+}
+
+/* ── 链接 ─────────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) a {
+	color: var(--brand-blue);
+	font-weight: 500;
+	text-decoration: underline;
+	text-decoration-style: dashed;
+	text-decoration-color: var(--accent-border);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 4px;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	word-break: break-word;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) a:hover,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) a:active {
+	text-decoration-color: currentColor;
+	text-decoration-style: solid;
+	background: var(--accent-soft);
+	border-radius: 4px;
+}
+
+/* ── 分隔线 ───────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) hr {
+	margin: 2.5em 0;
+	border: none;
+	border-top: 1px dashed var(--divider);
+}
+
+/* ── 引用 ─────────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote {
+	position: relative;
+	margin: 1.6em 0;
+	padding: 0 0 0 1.25em;
+	border: none;
+	border-radius: 0;
+	background: none;
+	font-style: normal;
+	font-weight: inherit;
+	color: var(--ink-soft);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote::before {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 0.25rem;
+	height: 100%;
+	border-radius: 999px;
+	background: var(--brand-blue);
+	content: "";
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote > :first-child {
+	margin-top: 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote > :last-child {
+	margin-bottom: 0;
+}
+
+/* ── 列表 ─────────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) ul,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) ol {
+	margin: 1.25em 0;
+	padding-left: 1.625em;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) li {
+	margin: 0.5em 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) li::marker {
+	color: var(--brand-blue);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) li > :is(ul, ol) {
+	margin: 0.75em 0;
+}
+
+/* ── 行内代码 ─────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) code,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) pre,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) kbd {
+	font-family: "Cascadia Code", "Consolas", monospace;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) :not(pre) > code {
+	padding: 0.125rem 0.35rem;
+	border-radius: 0.375rem;
+	background: var(--accent-soft);
+	color: var(--brand-blue);
+	font-size: 0.875em;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+/* ── 代码块 ───────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) pre {
+	margin: 1.5em 0;
+	padding: 1rem 1.25rem;
+	border: 1px solid var(--table-border);
+	border-radius: 0.75rem;
+	background: var(--code-background);
+	color: var(--code-text);
+	font-size: 0.875em;
+	line-height: 1.7143;
+	overflow-x: auto;
+	/* 阅读栏较窄，长行折行显示，避免横向撑破布局 */
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) pre code {
+	padding: 0;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	color: inherit;
+	font-size: inherit;
+	white-space: inherit;
+}
+
+/* toast-ui 的所见即所得代码块外壳，与 pre 保持同一外观 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .toastui-editor-ww-code-block {
+	border: 1px solid var(--table-border);
+	border-radius: 0.75rem;
+	background: var(--code-background);
+	overflow: hidden;
+}
+
+/* ── 表格 ─────────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) table {
+	width: 100%;
+	inline-size: 100%;
+	max-width: 100%;
+	margin: 1.5em 0;
+	border: 1px solid var(--table-border);
+	border-collapse: separate;
+	border-spacing: 0;
+	border-radius: 0.75rem;
+	background: var(--table-background);
+	box-sizing: border-box;
+	table-layout: fixed;
+	overflow: hidden;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) th,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) td {
+	min-width: 0;
+	/* 配合 table-layout: fixed，避免长内容把列宽撑开 */
+	max-width: 0;
+	padding: 0.6rem 0.85rem;
+	border: none;
+	border-right: 1px solid var(--table-border);
+	border-bottom: 1px solid var(--table-border);
+	color: var(--brand-navy);
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) th {
+	background: var(--table-header-background);
+	font-weight: 600;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) :is(th, td):last-child {
+	border-right: none;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) tr:last-child td {
+	border-bottom: none;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) tr:nth-child(even) td {
+	background: var(--table-header-background);
+}
+
+/* ── 图片 ─────────────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 2em 0;
+	border: none;
+	border-radius: 0.75rem;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) p > img:only-child {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/* ── 首尾元素留白清理 ─────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) > :first-child {
+	margin-top: 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) > :last-child {
+	margin-bottom: 0;
+}
+
+/* ── 窄屏微调 ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+	:is(.blog-prose, .blog-prose .toastui-editor-contents) {
+		font-size: calc(var(--reader-font-size, 1rem) * 0.96);
+	}
+
+	:is(.blog-prose, .blog-prose .toastui-editor-contents) h1 {
+		font-size: 1.625rem;
+	}
+
+	:is(.blog-prose, .blog-prose .toastui-editor-contents) h2 {
+		font-size: 1.35rem;
+	}
+
+	:is(.blog-prose, .blog-prose .toastui-editor-contents) h3 {
+		font-size: 1.15rem;
+	}
+}
+
+/* ── 提示框（由 utils/richContent.js 生成）───────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout {
+	--callout-accent: var(--brand-blue);
+	--callout-bg: var(--accent-soft);
+	margin: 1.5em 0;
+	padding: 1rem 1.15rem;
+	border: 1px solid color-mix(in srgb, var(--callout-accent) 28%, transparent);
+	border-radius: 0.75rem;
+	background: var(--callout-bg);
+	color: var(--brand-navy);
+	font-style: normal;
+}
+
+/* 提示框用整块底色，去掉引用块那条竖线 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout::before {
+	display: none;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-callout-title {
+	margin: 0 0 0.5em;
+	color: var(--callout-accent);
+	font-size: 0.9rem;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout > :last-child {
+	margin-bottom: 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-note {
+	--callout-accent: var(--brand-blue);
+	--callout-bg: var(--accent-soft);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-tip {
+	--callout-accent: var(--moss);
+	--callout-bg: var(--moss-soft);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-important {
+	--callout-accent: var(--brand-gold);
+	--callout-bg: var(--search-highlight-bg);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-warning,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-caution {
+	--callout-accent: var(--danger);
+	--callout-bg: var(--danger-soft);
+}
+
+/* ── 数学公式（KaTeX）─────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .katex-display {
+	max-width: 100%;
+	margin: 1.25em 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 0.25em 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .katex {
+	font-size: 1.05em;
+}
