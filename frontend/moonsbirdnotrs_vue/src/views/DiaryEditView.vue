@@ -29,7 +29,6 @@ import {
 import api from '../services/api'
 import {
   EDITOR_SETTINGS_CHANGE_EVENT,
-  EDITOR_TOOLBAR_MODES,
   getEditorSettings,
 } from '../utils/editorSettings'
 import {
@@ -38,24 +37,22 @@ import {
   extractTableLayoutMetadata,
   serializeMarkdownWithTableLayouts,
 } from '../utils/tableLayout'
+import { getFenceLanguage, replaceFenceLanguage } from '../utils/fenceInfo'
+import { createRichBlockPreview } from '../utils/editorDecorations'
+import { applyWysiwygCallout, getActiveCalloutType, insertWysiwygText } from '../utils/wysiwygBlocks'
 import '../styles/markdown.css'
 
 const route = useRoute()
 const router = useRouter()
 
 const editorRoot = ref(null)
-const floatingToolbar = ref(null)
-const tablePickerButton = ref(null)
-const tablePickerPanel = ref(null)
 const imageInput = ref(null)
 const imageReplaceInput = ref(null)
 const loading = ref(false)
 const saving = ref(false)
 const editorReady = ref(false)
-const tablePickerVisible = ref(false)
 const diaryFieldsCollapsed = ref(false)
-const toolbarVisible = ref(false)
-const selectionRange = ref(null)
+const activeCalloutType = ref('')
 const fixedToolbarSelectionRange = ref(null)
 const fixedToolbarSelectedText = ref('')
 const entry = ref(null)
@@ -63,14 +60,6 @@ const currentMarkdown = ref('')
 const editorSettings = ref(getEditorSettings())
 const imageToolbarVisible = ref(false)
 const activeEditorImage = ref(null)
-const toolbarPosition = reactive({
-  top: -9999,
-  left: -9999,
-})
-const tablePickerPosition = reactive({
-  top: -9999,
-  left: -9999,
-})
 const imageToolbarPosition = reactive({
   top: -9999,
   left: -9999,
@@ -88,19 +77,8 @@ let editorInstance = null
 let tableLayoutMetadata = []
 let autoSaveTimer = null
 let lastSavedContent = ''
-let toolbarSyncFrame = null
 let pendingImageSelectionRange = null
 let cleanupEditorImageListeners = null
-
-const tablePickerRows = Array.from({ length: MAX_TABLE_ROW_COUNT }, (_, index) => index + 1)
-const tablePickerColumns = Array.from({ length: MAX_TABLE_COLUMN_COUNT }, (_, index) => index + 1)
-const tablePickerPreview = reactive({
-  rows: 3,
-  columns: 3,
-})
-const tablePickerLabel = computed(
-  () => `${tablePickerPreview.rows}行 * ${tablePickerPreview.columns}列表格`
-)
 
 const padDatePart = (value) => String(value).padStart(2, '0')
 
@@ -163,10 +141,6 @@ const autoSaveStatusText = computed(() => {
 
   return `自动保存：${Math.round(editorSettings.value.autoSaveIntervalMs / 1000)} 秒`
 })
-const isFixedToolbarMode = computed(
-  () => editorSettings.value.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED
-)
-
 const addDaysToSelected = (days) => {
   const date = parseDateKey(selectedDate.value) || new Date()
   date.setDate(date.getDate() + days)
@@ -258,13 +232,56 @@ const syncMarkdownFromEditor = () => {
 const getWysiwygView = () => editorInstance?.wwEditor?.view || null
 
 const updateFixedToolbarSnapshot = () => {
-  const snapshot = getFixedToolbarSnapshot(getWysiwygView())
+  const view = getWysiwygView()
+  const snapshot = getFixedToolbarSnapshot(view)
   Object.assign(fixedToolbarState, snapshot.state)
   fixedToolbarSelectedText.value = snapshot.selectedText
+  activeCalloutType.value = view ? getActiveCalloutType(view.state).toLowerCase() : ''
 
   if (snapshot.range) {
     fixedToolbarSelectionRange.value = snapshot.range
   }
+}
+
+const getSelectedCodeBlockPos = (view) => {
+  const selection = view?.state?.selection
+  if (!view || !selection) {
+    return null
+  }
+
+  for (let depth = selection.$from.depth; depth >= 0; depth -= 1) {
+    if (selection.$from.node(depth)?.type?.name === 'codeBlock') {
+      return depth === 0 ? 0 : selection.$from.before(depth)
+    }
+  }
+
+  let found = null
+  view.state.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+    if (found !== null) {
+      return false
+    }
+    if (node.type.name === 'codeBlock') {
+      found = pos
+      return false
+    }
+    return true
+  })
+
+  return found
+}
+
+/** 顶部工具栏「⋯」：对光标所在代码块修改语言（日记不提供完整参数面板）。 */
+const openFixedToolbarCodeBlockOptions = () => {
+  const view = getWysiwygView()
+  const selection = view?.state?.selection
+  const pos = getSelectedCodeBlockPos(view)
+
+  if (!view || !selection || pos === null) {
+    ElMessage.info('把光标放进一个代码块里，再改代码块语言。')
+    return
+  }
+
+  promptDiaryCodeBlockLanguage(pos)
 }
 
 const rememberFixedToolbarSelection = () => {
@@ -327,271 +344,80 @@ const insertFixedToolbarTable = (rows, columns) => {
   })
 }
 
-const getEditorSelection = () => {
+/** 提示框与公式是扩展语法，toast-ui 没有对应命令，直接写入文本/引用块。 */
+const insertFixedToolbarMath = (displayMode) => {
   const view = getWysiwygView()
-  const stateSelection = view?.state?.selection
-  if (!view || !stateSelection || stateSelection.empty) {
-    return null
+  if (!view) {
+    return
   }
 
-  return [stateSelection.from, stateSelection.to]
+  restoreFixedToolbarSelection()
+
+  if (displayMode) {
+    // 块级公式不替换选中正文（默认插入到选区末尾）
+    insertWysiwygText(view, '$$\nE = mc^2\n$$')
+  } else {
+    // 行内公式包住选中文字；没有选区时写入占位符
+    insertWysiwygText(view, '$x^2$', {
+      wrapSelection: true,
+      before: '$',
+      after: '$',
+    })
+  }
+  syncAfterFixedToolbarCommand()
 }
 
-const isRectInViewport = (rect) =>
-  rect.bottom > 0 &&
-  rect.top < window.innerHeight &&
-  rect.right > 0 &&
-  rect.left < window.innerWidth
-
-const hideToolbar = () => {
-  toolbarVisible.value = false
-  tablePickerVisible.value = false
-  selectionRange.value = null
-  toolbarPosition.top = -9999
-  toolbarPosition.left = -9999
-  tablePickerPosition.top = -9999
-  tablePickerPosition.left = -9999
-}
-
-const getEditorSelectionRect = () => {
+const insertFixedToolbarCallout = (kind = 'note') => {
   const view = getWysiwygView()
-  const stateSelection = view?.state?.selection
-  if (!view || !stateSelection || stateSelection.empty) {
-    return null
+  if (!view) {
+    ElMessage.warning('编辑器尚未准备好，请稍后重试。')
+    return
   }
 
+  restoreFixedToolbarSelection()
+
+  if (!applyWysiwygCallout(view, { kind })) {
+    ElMessage.warning('编辑器尚未准备好，请稍后重试。')
+    return
+  }
+
+  syncAfterFixedToolbarCommand()
+}
+
+/** 代码块语言：只替换 info-string 的第一个词，保留标题与行标记。 */
+const promptDiaryCodeBlockLanguage = async (pos) => {
+  const view = getWysiwygView()
+  const node = view?.state.doc.nodeAt(pos)
+  if (!view || !node || node.type?.name !== 'codeBlock') {
+    return
+  }
+
+  const currentInfo = node.attrs.language || ''
+  let nextLanguage = ''
   try {
-    const browserSelection = window.getSelection()
-    const browserRange = browserSelection?.rangeCount ? browserSelection.getRangeAt(0) : null
-    if (browserRange) {
-      if (!editorRoot.value?.contains(browserRange.commonAncestorContainer)) {
-        return null
-      }
-
-      const browserRects = Array.from(browserRange.getClientRects()).filter((r) => r.width > 0 || r.height > 0)
-      if (browserRects.length) {
-        return browserRects.reduce((best, r) => (r.top < best.top ? r : best), browserRects[0])
-      }
-    }
-
-    const from = Math.min(stateSelection.from, stateSelection.to)
-    const to = Math.max(stateSelection.from, stateSelection.to)
-    const startRect = view.coordsAtPos(from)
-    const nextRect = view.coordsAtPos(Math.min(from + 1, to))
-    const sameLine = Math.abs(startRect.top - nextRect.top) < 2
-    const right = sameLine
-      ? Math.max(startRect.right ?? startRect.left, nextRect.left, startRect.left + 1)
-      : Math.max(startRect.right ?? startRect.left, startRect.left + 1)
-
-    return {
-      top: startRect.top,
-      bottom: startRect.bottom,
-      left: startRect.left,
-      right,
-      width: Math.max(right - startRect.left, 1),
-      height: Math.max(startRect.bottom - startRect.top, 1),
-    }
+    const { value } = await ElMessageBox.prompt('只修改语言，标题、行号与行标记会保留。', '代码块语言', {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputValue: getFenceLanguage(currentInfo) === 'text' ? '' : getFenceLanguage(currentInfo),
+      inputPlaceholder: 'js / py / bash（留空表示 text）',
+    })
+    nextLanguage = value
   } catch {
-    return null
-  }
-}
-
-const rememberEditorSelectionRange = () => {
-  const editorSelection = getEditorSelection()
-  if (editorSelection) {
-    selectionRange.value = editorSelection
-  }
-}
-
-const restoreSelection = () => {
-  if (!editorInstance || !selectionRange.value) {
-    return false
-  }
-
-  const view = getWysiwygView()
-  const docSize = view?.state?.doc?.content?.size
-  if (!view || !Number.isFinite(docSize)) {
-    return false
-  }
-
-  try {
-    const [start, end] = selectionRange.value
-    const safeStart = Math.max(0, Math.min(start, docSize))
-    const safeEnd = Math.max(0, Math.min(end, docSize))
-    editorInstance.focus()
-    editorInstance.setSelection(safeStart, safeEnd)
-    return true
-  } catch {
-    hideToolbar()
-    return false
-  }
-}
-
-const syncToolbarPosition = () => {
-  if (isFixedToolbarMode.value) {
-    hideToolbar()
     return
   }
 
-  if (!editorInstance || !floatingToolbar.value) {
+  const nextInfo = replaceFenceLanguage(currentInfo, String(nextLanguage || '').trim())
+  if (nextInfo === currentInfo) {
     return
   }
 
-  const editorSelection = getEditorSelection()
-  if (!editorSelection) {
-    hideToolbar()
-    return
-  }
-
-  const browserSelection = window.getSelection()
-  const browserRange = browserSelection?.rangeCount ? browserSelection.getRangeAt(0) : null
-  const browserSelectionInsideEditor = Boolean(
-    browserRange && editorRoot.value?.contains(browserRange.commonAncestorContainer)
+  view.dispatch(
+    view.state.tr.setNodeMarkup(pos, null, {
+      ...node.attrs,
+      language: nextInfo,
+    })
   )
-  const activeInsideEditor = Boolean(editorRoot.value?.contains(document.activeElement))
-  const activeInsideToolbar = Boolean(floatingToolbar.value?.contains(document.activeElement))
-  const activeInsideTablePicker = Boolean(tablePickerPanel.value?.contains(document.activeElement))
-  if (!browserSelectionInsideEditor && !activeInsideEditor && !activeInsideToolbar && !activeInsideTablePicker) {
-    hideToolbar()
-    return
-  }
-
-  const rect = getEditorSelectionRect()
-  if (!rect || !isRectInViewport(rect)) {
-    hideToolbar()
-    return
-  }
-
-  selectionRange.value = editorSelection
-
-  if (!toolbarVisible.value) {
-    toolbarVisible.value = true
-    nextTick(scheduleToolbarSync)
-    return
-  }
-
-  const toolbarRect = floatingToolbar.value.getBoundingClientRect()
-  if (toolbarRect.width === 0 || toolbarRect.height === 0) {
-    return
-  }
-
-  const viewportPadding = 12
-  const topAbove = rect.top - toolbarRect.height - 10
-  const topBelow = rect.bottom + 10
-  const maxTop = window.innerHeight - toolbarRect.height - viewportPadding
-  const nextTop = topAbove >= viewportPadding ? topAbove : topBelow
-  const desiredLeft = rect.left + rect.width / 2 - toolbarRect.width / 2
-  const maxLeft = window.innerWidth - toolbarRect.width - viewportPadding
-
-  toolbarPosition.top = Math.min(Math.max(nextTop, viewportPadding), Math.max(viewportPadding, maxTop))
-  toolbarPosition.left = Math.min(Math.max(desiredLeft, viewportPadding), Math.max(viewportPadding, maxLeft))
-
-  if (tablePickerVisible.value) {
-    nextTick(syncTablePickerPosition)
-  }
-}
-
-const cancelToolbarSync = () => {
-  if (toolbarSyncFrame !== null) {
-    window.cancelAnimationFrame(toolbarSyncFrame)
-    toolbarSyncFrame = null
-  }
-}
-
-const scheduleToolbarSync = () => {
-  if (toolbarSyncFrame !== null) {
-    return
-  }
-
-  toolbarSyncFrame = window.requestAnimationFrame(() => {
-    toolbarSyncFrame = null
-    syncToolbarPosition()
-  })
-}
-
-const hideTablePicker = () => {
-  tablePickerVisible.value = false
-  tablePickerPosition.top = -9999
-  tablePickerPosition.left = -9999
-}
-
-const syncTablePickerPosition = () => {
-  if (!tablePickerVisible.value || !tablePickerButton.value || !tablePickerPanel.value) {
-    return
-  }
-
-  const buttonRect = tablePickerButton.value.getBoundingClientRect()
-  const panelRect = tablePickerPanel.value.getBoundingClientRect()
-  if (panelRect.width === 0 || panelRect.height === 0) {
-    return
-  }
-
-  const viewportPadding = 12
-  const topBelow = buttonRect.bottom + 10
-  const topAbove = buttonRect.top - panelRect.height - 10
-  const maxTop = window.innerHeight - panelRect.height - viewportPadding
-  const nextTop =
-    topBelow + panelRect.height <= window.innerHeight - viewportPadding ? topBelow : topAbove
-  const desiredLeft = buttonRect.left + buttonRect.width / 2 - panelRect.width / 2
-  const maxLeft = window.innerWidth - panelRect.width - viewportPadding
-
-  tablePickerPosition.top = Math.min(Math.max(nextTop, viewportPadding), Math.max(viewportPadding, maxTop))
-  tablePickerPosition.left = Math.min(Math.max(desiredLeft, viewportPadding), Math.max(viewportPadding, maxLeft))
-}
-
-const toggleTablePicker = () => {
-  if (!editorReady.value) {
-    return
-  }
-
-  rememberEditorSelectionRange()
-
-  if (tablePickerVisible.value) {
-    hideTablePicker()
-    return
-  }
-
-  previewTablePickerSize(3, 3)
-  tablePickerVisible.value = true
-  nextTick(syncTablePickerPosition)
-}
-
-const runEditorCommand = (command, payload) => {
-  if (!editorInstance) {
-    return
-  }
-
-  if (!restoreSelection()) {
-    editorInstance.focus()
-  }
-  editorInstance.exec(command, payload)
-  syncMarkdownFromEditor()
-  nextTick(scheduleToolbarSync)
-}
-
-const applyHeading = (level) => {
-  runEditorCommand('heading', { level })
-}
-
-const previewTablePickerSize = (rows, columns) => {
-  tablePickerPreview.rows = rows
-  tablePickerPreview.columns = columns
-}
-
-const isTablePickerCellActive = (row, column) =>
-  row <= tablePickerPreview.rows && column <= tablePickerPreview.columns
-
-const applySelectedTable = (rows, columns) => {
-  if (rows > MAX_TABLE_ROW_COUNT || columns > MAX_TABLE_COLUMN_COUNT) {
-    ElMessage.warning(`表格最多支持 ${MAX_TABLE_ROW_COUNT} 行 * ${MAX_TABLE_COLUMN_COUNT} 列`)
-    return
-  }
-
-  hideTablePicker()
-  runEditorCommand('addTable', {
-    rowCount: rows,
-    columnCount: columns,
-  })
+  syncAfterFixedToolbarCommand()
 }
 
 const getImageUploadErrorDetail = (error) =>
@@ -781,7 +607,6 @@ const showImageToolbar = (imageElement) => {
     Math.max(12, window.innerWidth - 236)
   )
   imageToolbarVisible.value = true
-  hideToolbar()
 }
 
 const getImageElementFromEvent = (event) => {
@@ -877,16 +702,6 @@ const deleteActiveImage = async () => {
   }
 }
 
-const triggerImageUpload = () => {
-  if (!editorInstance) {
-    return
-  }
-
-  rememberEditorSelectionRange()
-  pendingImageSelectionRange = selectionRange.value ? [...selectionRange.value] : null
-  imageInput.value?.click()
-}
-
 const triggerFixedToolbarImageUpload = () => {
   if (!editorInstance) {
     return
@@ -910,11 +725,7 @@ const handleToolbarImageChange = async (event) => {
 
   try {
     await uploadEditorImage(file, (imageUrl, altText) => {
-      if (pendingImageSelectionRange) {
-        selectionRange.value = [...pendingImageSelectionRange]
-      }
-
-      runEditorCommand('addImage', {
+      runFixedToolbarCommand('addImage', {
         imageUrl,
         altText,
       })
@@ -975,6 +786,12 @@ const buildEditor = () => {
     usageStatistics: false,
     toolbarItems: [],
     hideModeSwitch: true,
+    // 富文本面板里的提示框 / 代码块即时预览（decoration，不改变文档内容）
+    plugins: [
+      createRichBlockPreview({
+        onEditLanguage: (pos) => promptDiaryCodeBlockLanguage(pos),
+      }),
+    ],
     hooks: {
       addImageBlobHook: uploadEditorImage,
     },
@@ -984,28 +801,10 @@ const buildEditor = () => {
         updateFixedToolbarSnapshot()
       },
       caretChange: () => {
-        nextTick(() => {
-          rememberEditorSelectionRange()
-          updateFixedToolbarSnapshot()
-          scheduleToolbarSync()
-        })
+        nextTick(updateFixedToolbarSnapshot)
       },
       focus: () => {
-        nextTick(() => {
-          rememberEditorSelectionRange()
-          updateFixedToolbarSnapshot()
-          scheduleToolbarSync()
-        })
-      },
-      blur: () => {
-        window.setTimeout(() => {
-          const active = document.activeElement
-          if (floatingToolbar.value?.contains(active)) {
-            return
-          }
-
-          hideToolbar()
-        }, 120)
+        nextTick(updateFixedToolbarSnapshot)
       },
     },
   })
@@ -1111,10 +910,7 @@ const startAutoSave = () => {
 
 const handleEditorSettingsChange = (event) => {
   editorSettings.value = event.detail || getEditorSettings()
-  if (isFixedToolbarMode.value) {
-    hideToolbar()
-    nextTick(updateFixedToolbarSnapshot)
-  }
+  nextTick(updateFixedToolbarSnapshot)
   startAutoSave()
 }
 
@@ -1128,16 +924,11 @@ const goToNeighbourDate = (days) => {
 
 const toggleDiaryFields = () => {
   diaryFieldsCollapsed.value = !diaryFieldsCollapsed.value
-  hideToolbar()
   hideImageToolbar()
 }
 
 const handleDocumentSelection = () => {
-  nextTick(() => {
-    rememberEditorSelectionRange()
-    updateFixedToolbarSnapshot()
-    scheduleToolbarSync()
-  })
+  nextTick(updateFixedToolbarSnapshot)
 }
 
 onMounted(async () => {
@@ -1148,28 +939,20 @@ onMounted(async () => {
 
   document.addEventListener('selectionchange', handleDocumentSelection)
   window.addEventListener(EDITOR_SETTINGS_CHANGE_EVENT, handleEditorSettingsChange)
-  window.addEventListener('resize', hideToolbar)
   window.addEventListener('resize', hideImageToolbar)
-  window.addEventListener('scroll', scheduleToolbarSync, true)
   window.addEventListener('scroll', hideImageToolbar, true)
-  document.addEventListener('scroll', scheduleToolbarSync, true)
   document.addEventListener('scroll', hideImageToolbar, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('selectionchange', handleDocumentSelection)
   window.removeEventListener(EDITOR_SETTINGS_CHANGE_EVENT, handleEditorSettingsChange)
-  window.removeEventListener('resize', hideToolbar)
   window.removeEventListener('resize', hideImageToolbar)
-  window.removeEventListener('scroll', scheduleToolbarSync, true)
   window.removeEventListener('scroll', hideImageToolbar, true)
-  document.removeEventListener('scroll', scheduleToolbarSync, true)
   document.removeEventListener('scroll', hideImageToolbar, true)
   stopAutoSave()
-  cancelToolbarSync()
   cleanupEditorImageListeners?.()
   cleanupEditorImageListeners = null
-  hideToolbar()
   hideImageToolbar()
   editorInstance?.destroy()
   editorInstance = null
@@ -1292,187 +1075,24 @@ onBeforeUnmount(() => {
             </div>
 
             <FixedEditorToolbar
-              v-if="isFixedToolbarMode"
               :editor-ready="editorReady"
               :toolbar-state="fixedToolbarState"
               :selected-text="fixedToolbarSelectedText"
               :heading-options="headingOptions"
               :max-table-rows="MAX_TABLE_ROW_COUNT"
               :max-table-columns="MAX_TABLE_COLUMN_COUNT"
+              :active-callout="activeCalloutType"
               @remember-selection="rememberFixedToolbarSelection"
               @command="runFixedToolbarCommand"
               @apply-heading="applyFixedToolbarHeading"
               @insert-link="insertFixedToolbarLink"
               @insert-image="triggerFixedToolbarImageUpload"
               @insert-table="insertFixedToolbarTable"
+              @insert-math="insertFixedToolbarMath"
+              @insert-callout="insertFixedToolbarCallout"
+              @open-code-block-options="openFixedToolbarCodeBlockOptions"
             />
 
-            <Teleport v-if="!isFixedToolbarMode" to="body">
-              <div
-                v-show="toolbarVisible"
-                ref="floatingToolbar"
-                class="floating-toolbar"
-                aria-label="日记正文工具栏"
-                :style="{
-                  top: `${toolbarPosition.top}px`,
-                  left: `${toolbarPosition.left}px`,
-                }"
-              >
-              <div class="toolbar-group heading-group">
-                <el-tooltip
-                  v-for="option in headingOptions"
-                  :key="option.value"
-                  :content="`标题 ${option.label}`"
-                  placement="top"
-                  :show-after="120"
-                >
-                  <button
-                    type="button"
-                    class="toolbar-chip"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="applyHeading(option.value)"
-                  >
-                    {{ option.label }}
-                  </button>
-                </el-tooltip>
-              </div>
-
-              <div class="toolbar-divider"></div>
-
-              <div class="toolbar-group">
-                <el-tooltip content="加粗" placement="top" :show-after="120">
-                  <button
-                    type="button"
-                    class="toolbar-button"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="runEditorCommand('bold')"
-                  >
-                    <strong>B</strong>
-                  </button>
-                </el-tooltip>
-
-                <el-tooltip content="斜体" placement="top" :show-after="120">
-                  <button
-                    type="button"
-                    class="toolbar-button"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="runEditorCommand('italic')"
-                  >
-                    <em>I</em>
-                  </button>
-                </el-tooltip>
-
-                <el-tooltip content="删除线" placement="top" :show-after="120">
-                  <button
-                    type="button"
-                    class="toolbar-button"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="runEditorCommand('strike')"
-                  >
-                    <span class="toolbar-strike">S</span>
-                  </button>
-                </el-tooltip>
-              </div>
-
-              <div class="toolbar-divider"></div>
-
-              <div class="toolbar-group">
-                <el-tooltip content="引用" placement="top" :show-after="120">
-                  <button
-                    type="button"
-                    class="toolbar-button with-icon"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="runEditorCommand('blockQuote')"
-                  >
-                    <el-icon><Tickets /></el-icon>
-                  </button>
-                </el-tooltip>
-
-                <el-tooltip content="分割线" placement="top" :show-after="120">
-                  <button
-                    type="button"
-                    class="toolbar-button with-icon"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="runEditorCommand('thematicBreak')"
-                  >
-                    <el-icon><Minus /></el-icon>
-                  </button>
-                </el-tooltip>
-              </div>
-
-              <div class="toolbar-divider"></div>
-
-              <div class="toolbar-group">
-                <el-tooltip content="插入表格" placement="top" :show-after="120">
-                  <button
-                    ref="tablePickerButton"
-                    type="button"
-                    class="toolbar-button with-icon"
-                    :class="{ 'is-active': tablePickerVisible }"
-                    :disabled="!editorReady"
-                    aria-label="插入表格"
-                    @mousedown.prevent
-                    @click.stop="toggleTablePicker"
-                  >
-                    <span class="toolbar-table-icon">T</span>
-                  </button>
-                </el-tooltip>
-
-                <el-tooltip content="上传图片" placement="top" :show-after="120">
-                  <button
-                    type="button"
-                    class="toolbar-button with-icon"
-                    :disabled="!editorReady"
-                    @mousedown.prevent
-                    @click="triggerImageUpload"
-                  >
-                    <el-icon><Picture /></el-icon>
-                  </button>
-                </el-tooltip>
-              </div>
-              </div>
-
-              <div
-                v-show="tablePickerVisible"
-                ref="tablePickerPanel"
-                class="diary-table-picker-panel"
-                :style="{
-                  top: `${tablePickerPosition.top}px`,
-                  left: `${tablePickerPosition.left}px`,
-                }"
-                @mousedown.prevent
-                @click.stop
-              >
-                <div class="toolbar-table-picker-head">
-                  <strong>{{ tablePickerLabel }}</strong>
-                </div>
-                <div
-                  class="toolbar-table-picker-grid"
-                  :style="{ gridTemplateColumns: `repeat(${tablePickerColumns.length}, 26px)` }"
-                >
-                  <template v-for="row in tablePickerRows" :key="row">
-                    <button
-                      v-for="column in tablePickerColumns"
-                      :key="`${row}-${column}`"
-                      type="button"
-                      class="toolbar-table-picker-cell"
-                      :class="{ 'is-active': isTablePickerCellActive(row, column) }"
-                      :aria-label="`插入 ${row} 行 ${column} 列表格`"
-                      @mouseenter="previewTablePickerSize(row, column)"
-                      @focus="previewTablePickerSize(row, column)"
-                      @mousedown.prevent
-                      @click="applySelectedTable(row, column)"
-                    ></button>
-                  </template>
-                </div>
-              </div>
-            </Teleport>
 
             <div class="diary-editor-body">
               <div ref="editorRoot" class="diary-editor-root"></div>

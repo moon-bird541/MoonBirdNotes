@@ -11,13 +11,13 @@ import { liftTarget } from 'prosemirror-transform'
 import '@toast-ui/editor/dist/toastui-editor.css'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
+import BodyPreviewDialog from '../editor/components/BodyPreviewDialog.vue'
+import CodeBlockOptionsDialog from '../editor/components/CodeBlockOptionsDialog.vue'
 import EditorTableOverlays from '../editor/components/EditorTableOverlays.vue'
 import FixedEditorToolbar from '../editor/components/FixedEditorToolbar.vue'
-import FloatingFormatToolbar from '../editor/components/FloatingFormatToolbar.vue'
 import FloatingPreview from '../editor/components/FloatingPreview.vue'
 import NoteEditorPanel from '../editor/components/NoteEditorPanel.vue'
 import NoteEditHeader from '../editor/components/NoteEditHeader.vue'
-import SideTableToolbar from '../editor/components/SideTableToolbar.vue'
 import TableActionPanel from '../editor/components/TableActionPanel.vue'
 import VersionHistoryDrawer from '../editor/components/VersionHistoryDrawer.vue'
 import VersionPreviewDialog from '../editor/components/VersionPreviewDialog.vue'
@@ -35,7 +35,6 @@ import {
 import api from '../services/api'
 import {
   EDITOR_SETTINGS_CHANGE_EVENT,
-  EDITOR_TOOLBAR_MODES,
   getEditorSettings,
 } from '../utils/editorSettings'
 import {
@@ -57,6 +56,23 @@ import {
   setTableInlineLimit,
   syncTableColgroup,
 } from '../utils/tableLayout'
+import { getFenceLanguage, replaceFenceLanguage } from '../utils/fenceInfo'
+import { buildEditorTableLayoutCss } from '../utils/tableLayoutCss'
+import {
+  buildTableCellSelectionRect,
+  collectCellsInSelectionRect,
+  doRectsIntersect,
+  resolveTableCellPosition,
+} from '../utils/tableSelection'
+import {
+  computeTableResizeLayout,
+  normalizeResizeColumns,
+  normalizeResizeRows,
+} from '../utils/tableResize'
+import { createRichBlockPreview } from '../utils/editorDecorations'
+import { renderMarkdownPreview } from '../utils/markdownPreview'
+import { sanitizePreviewHtml } from '../utils/previewSanitizer'
+import { applyWysiwygCallout, getActiveCalloutType } from '../utils/wysiwygBlocks'
 import '../styles/markdown.css'
 
 const route = useRoute()
@@ -75,30 +91,16 @@ const tagInputValue = ref('')
 const editorRoot = ref(null)
 const imageInsertInput = ref(null)
 const imageReplaceInput = ref(null)
-const floatingToolbar = ref(null)
-const selectionRange = ref(null)
-const toolbarVisible = ref(false)
-const toolbarSelectionInTable = ref(false)
+const activeCalloutType = ref('')
 const tableMultiCellSelectionActive = ref(false)
-const sideTablePickerVisible = ref(false)
 const tableActionPanelVisible = ref(false)
 const tableHoverControlVisible = ref(false)
 const tableResizeHandleVisible = ref(false)
 const tableResizeHandleDragging = ref(false)
 const activeTableInfo = ref(null)
 const floatingPreviewVisible = ref(false)
-const hoverBlockHintVisible = ref(false)
 const editorSettings = ref(getEditorSettings())
 const editorPlaceholder = '在这里直接编辑笔记正文'
-const toolbarPosition = reactive({
-  top: -9999,
-  left: -9999,
-})
-const hoverBlockHint = reactive({
-  label: '',
-  top: -9999,
-  left: -9999,
-})
 const tableActionPanelPosition = reactive({
   top: -9999,
   left: -9999,
@@ -143,26 +145,15 @@ const versionPreview = reactive({
   version: null,
 })
 
-const toolbarState = reactive({
-  strong: createToolbarToggleState(),
-  italic: createToolbarToggleState(),
-  strike: createToolbarToggleState(),
-  code: createToolbarToggleState(),
-  cellAlignLeft: createToolbarToggleState(),
-  cellAlignCenter: createToolbarToggleState(),
-  cellAlignRight: createToolbarToggleState(),
-  blockQuote: createToolbarToggleState(),
-  codeBlock: createToolbarToggleState(),
-  horizontalRule: createToolbarToggleState(),
-  headings: headingOptions.reduce((map, option) => {
-    map[option.value] = createToolbarToggleState()
-    return map
-  }, {}),
-})
-
 const previewHtml = ref('')
+const bodyPreviewVisible = ref(false)
+const bodyPreviewHtml = ref('')
 const floatingPreviewBodyHtml = ref('')
 const currentMarkdown = ref('')
+const codeOptionsVisible = ref(false)
+const codeOptionsInfo = ref('')
+const codeOptionsCode = ref('')
+const codeOptionsTarget = ref(null)
 const floatingPreviewMode = ref('body')
 const imageToolbarVisible = ref(false)
 const activeEditorImage = ref(null)
@@ -174,11 +165,9 @@ const fixedToolbarState = reactive(createFixedToolbarState())
 const fixedToolbarSelectedText = ref('')
 
 let editorInstance = null
-let activeCodeLanguageInput = null
-let activeCodeLanguageChip = null
 let floatingPreviewTimer = null
 let cleanupEditorSelectionListeners = null
-let toolbarSyncFrame = null
+let toolbarStateFrame = null
 let cleanupEditorHoverListeners = null
 let lastEditorSelectionRange = null
 let toastContextMenuFrame = null
@@ -211,9 +200,6 @@ const autoSaveStatusText = computed(() => {
 
   return `自动保存：${Math.round(editorSettings.value.autoSaveIntervalMs / 1000)} 秒`
 })
-const isFixedToolbarMode = computed(
-  () => editorSettings.value.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED
-)
 const canDeleteSelectedTableRow = computed(
   () => Boolean(activeTableInfo.value) && activeTableInfo.value.rowIndex > 0 && activeTableInfo.value.rowCount > 2
 )
@@ -246,12 +232,6 @@ const canSplitSelectedTableCell = computed(() => {
   tableActionPanelVisible.value
   return Boolean(getSplitTableCellInfo(false))
 })
-
-const hideToolbar = () => {
-  toolbarVisible.value = false
-  selectionRange.value = null
-  resetToolbarState()
-}
 
 const hideTableActionPanel = () => {
   tableActionPanelVisible.value = false
@@ -342,26 +322,6 @@ const ensureTableLayoutStyleElement = () => {
   return tableLayoutStyleElement
 }
 
-const getTableRowCssSelector = (tableSelector, tableElement, rowElement) => {
-  const rowParent = rowElement.parentElement
-  if (!rowParent || rowParent === tableElement) {
-    const rowIndex = Array.from(tableElement.children).filter((element) => element.tagName === 'TR').indexOf(rowElement)
-    return rowIndex >= 0 ? `${tableSelector} > tr:nth-of-type(${rowIndex + 1})` : ''
-  }
-
-  const sectionTagName = rowParent.tagName.toLowerCase()
-  const sectionIndex = Array.from(tableElement.children)
-    .filter((element) => element.tagName === rowParent.tagName)
-    .indexOf(rowParent)
-  const rowIndex = Array.from(rowParent.children).filter((element) => element.tagName === 'TR').indexOf(rowElement)
-
-  if (sectionIndex < 0 || rowIndex < 0) {
-    return ''
-  }
-
-  return `${tableSelector} > ${sectionTagName}:nth-of-type(${sectionIndex + 1}) > tr:nth-of-type(${rowIndex + 1})`
-}
-
 const syncEditorTableLayoutTargets = (tableElements) => {
   getEditorTableElements().forEach((tableElement) => {
     delete tableElement.dataset.moonbirdLayoutTableIndex
@@ -448,80 +408,6 @@ const getEditorTableCssSelector = (tableElement, tableIndex) => {
   return `.wysiwyg-editor .toastui-editor-ww-container .toastui-editor-contents table[data-moonbird-layout-table-index="${tableIndex}"]`
 }
 
-const getTableAlignmentCss = (align = 'left') => {
-  if (align === 'center') {
-    return 'margin-left:auto !important;margin-right:auto !important;'
-  }
-  if (align === 'right') {
-    return 'margin-left:auto !important;margin-right:0 !important;'
-  }
-  return 'margin-left:0 !important;margin-right:auto !important;'
-}
-
-const buildEditorTableLayoutCss = (tableElement, tableIndex, layout) => {
-  const columnCount = getTableColumnCount(tableElement)
-  const rowCount = getTableRowCount(tableElement)
-  const normalizedLayout = normalizeTableLayout(
-    layout,
-    columnCount,
-    tableElement.getBoundingClientRect().width,
-    rowCount,
-    tableElement.getBoundingClientRect().height
-  )
-
-  if (!normalizedLayout) {
-    return { layout: null, css: '' }
-  }
-
-  const fittedLayout = fitTableLayoutToMaxWidth(normalizedLayout, getAvailableTableWidth(tableElement))
-  const tableSelector = getEditorTableCssSelector(tableElement, tableIndex)
-  const tableHeightRule = fittedLayout.rows?.length
-    ? `height:${fittedLayout.height}px !important;min-height:${rowCount * MIN_TABLE_ROW_HEIGHT}px !important;`
-    : ''
-  const rules = [
-    `${tableSelector}{width:min(${fittedLayout.width}px,100%) !important;inline-size:min(${fittedLayout.width}px,100%) !important;max-width:100% !important;max-inline-size:100% !important;min-width:0 !important;min-inline-size:0 !important;overflow:hidden !important;${getTableAlignmentCss(fittedLayout.align)}${tableHeightRule}table-layout:fixed !important;box-sizing:border-box !important;}`,
-  ]
-
-  Array.from(tableElement.rows).forEach((rowElement, rowIndex) => {
-    const rowSelector = getTableRowCssSelector(tableSelector, tableElement, rowElement)
-    if (!rowSelector) {
-      return
-    }
-
-    const rowHeight = fittedLayout.rows?.[rowIndex]
-    if (rowHeight) {
-      rules.push(`${rowSelector}{height:${rowHeight}px !important;box-sizing:border-box !important;}`)
-    }
-
-    let columnIndex = 0
-    Array.from(rowElement.cells).forEach((cellElement) => {
-      if (cellElement.hasAttribute('extended')) {
-        return
-      }
-
-      const cellIndex = Array.from(rowElement.children).indexOf(cellElement)
-      const colSpan = getDomTableCellSpan(cellElement, 'colspan')
-      const cellWidth = fittedLayout.columns
-        .slice(columnIndex, columnIndex + colSpan)
-        .reduce((sum, width) => sum + width, 0)
-      const cellHeightRule = rowHeight ? `height:${rowHeight}px !important;` : ''
-
-      if (cellIndex >= 0 && cellWidth > 0) {
-        rules.push(
-          `${rowSelector} > *:nth-child(${cellIndex + 1}){width:${Math.round(cellWidth)}px !important;max-width:0 !important;min-width:0 !important;overflow-wrap:anywhere !important;word-break:break-word !important;${cellHeightRule}box-sizing:border-box !important;}`
-        )
-      }
-
-      columnIndex += colSpan
-    })
-  })
-
-  return {
-    layout: fittedLayout,
-    css: rules.join('\n'),
-  }
-}
-
 const updateEditorTableLayoutStyles = () => {
   const tableElements = getEditorLayoutTableElements()
   const nextLayouts = [...tableLayoutMetadata]
@@ -535,7 +421,8 @@ const updateEditorTableLayoutStyles = () => {
       return
     }
 
-    const result = buildEditorTableLayoutCss(tableElement, tableIndex, layout)
+    // 选择器要现场算（依赖编辑器 DOM 路径），样式规则本身由 util 生成。
+    const result = buildEditorTableLayoutCss(tableElement, tableIndex, layout, getEditorTableCssSelector)
     nextLayouts[tableIndex] = result.layout
     if (result.layout) {
       applyEditorTableLayoutToDom(tableElement, result.layout)
@@ -563,7 +450,7 @@ const applyStoredTableLayoutsToEditor = () => {
 
 const getCurrentMarkdownWithTableLayouts = () => {
   if (!editorInstance) {
-    return currentMarkdown.value || ''
+    return serializeMarkdownWithTableLayouts(currentMarkdown.value || '', tableLayoutMetadata)
   }
 
   updateEditorTableLayoutStyles()
@@ -741,33 +628,9 @@ const isNodeInsideEditor = (node) => {
   return Boolean(element && editorRoot.value?.contains(element))
 }
 
-const doRectsIntersect = (rectA, rectB) =>
-  rectA.left < rectB.right &&
-  rectA.right > rectB.left &&
-  rectA.top < rectB.bottom &&
-  rectA.bottom > rectB.top
-
 const getDomTableCellPosition = (cellElement) => {
-  const tableElement = cellElement?.closest?.('table')
-  const rowElement = cellElement?.closest?.('tr')
-
-  if (!tableElement || !rowElement) {
-    return null
-  }
-
-  const rowIndex = Array.from(tableElement.rows).indexOf(rowElement)
-  const columnIndex = Array.from(rowElement.cells).indexOf(cellElement)
-
-  if (rowIndex < 0 || columnIndex < 0) {
-    return null
-  }
-
-  return {
-    tableElement,
-    tableIndex: getEditorTableElements().indexOf(tableElement),
-    rowIndex,
-    columnIndex,
-  }
+  // 行列号换算在 utils/tableSelection.js（有单测），这里只补上「第几张表」。
+  return resolveTableCellPosition(cellElement, getEditorTableElements().indexOf(cellElement?.closest?.('table')))
 }
 
 const getEditorTableElements = () => {
@@ -796,26 +659,6 @@ const getEditorLayoutTableElements = () => {
 const getEditorContentsElements = () =>
   Array.from(editorRoot.value?.querySelectorAll('.toastui-editor-contents') || [])
 
-const buildTableCellSelectionRect = (anchorPosition, focusPosition) => {
-  if (
-    !anchorPosition ||
-    !focusPosition ||
-    anchorPosition.tableIndex < 0 ||
-    focusPosition.tableIndex < 0 ||
-    anchorPosition.tableIndex !== focusPosition.tableIndex
-  ) {
-    return null
-  }
-
-  return {
-    tableIndex: anchorPosition.tableIndex,
-    minRow: Math.min(anchorPosition.rowIndex, focusPosition.rowIndex),
-    maxRow: Math.max(anchorPosition.rowIndex, focusPosition.rowIndex),
-    minColumn: Math.min(anchorPosition.columnIndex, focusPosition.columnIndex),
-    maxColumn: Math.max(anchorPosition.columnIndex, focusPosition.columnIndex),
-  }
-}
-
 const getTableCellsFromSelectionRect = (selectionRect) => {
   if (!selectionRect) {
     return []
@@ -826,19 +669,7 @@ const getTableCellsFromSelectionRect = (selectionRect) => {
     return []
   }
 
-  const selectedCells = []
-
-  for (let rowIndex = selectionRect.minRow; rowIndex <= selectionRect.maxRow; rowIndex += 1) {
-    const rowElement = tableElement.rows[rowIndex]
-    for (let columnIndex = selectionRect.minColumn; columnIndex <= selectionRect.maxColumn; columnIndex += 1) {
-      const cellElement = rowElement?.cells?.[columnIndex]
-      if (cellElement) {
-        selectedCells.push(cellElement)
-      }
-    }
-  }
-
-  return selectedCells
+  return collectCellsInSelectionRect(tableElement.rows, selectionRect)
 }
 
 const markNativeTableCellVisualSelection = (selectedCells, selectionRect = nativeTableCellSelectionRect) => {
@@ -1189,7 +1020,6 @@ const updateTableResizeHandle = (event) => {
     return
   }
 
-  hideHoverBlockHint()
   showTableResizeHandle(hitInfo)
 }
 
@@ -1321,51 +1151,6 @@ const getTableColumnBoundaryPositions = (tableElement) => {
 
 const getTableRowBoundaryPositions = (tableElement) =>
   Array.from(tableElement?.rows || []).map((rowElement) => rowElement.getBoundingClientRect().bottom)
-
-const normalizeResizeColumns = (columns, totalWidth, minColumnWidth = MIN_TABLE_COLUMN_WIDTH) => {
-  const safeMinColumnWidth = Math.max(0, Math.round(minColumnWidth))
-  const safeTotalWidth = Math.max(Math.round(totalWidth), safeMinColumnWidth * columns.length)
-  const currentColumns = columns.map((width) => Math.max(Math.round(width), safeMinColumnWidth))
-  const flexibleWidths = currentColumns.map((width) => Math.max(width - safeMinColumnWidth, 0))
-  const flexibleTotal = flexibleWidths.reduce((sum, width) => sum + width, 0)
-  const extraWidth = safeTotalWidth - safeMinColumnWidth * currentColumns.length
-
-  if (!currentColumns.length) {
-    return Array.from({ length: columns.length }, () => safeMinColumnWidth)
-  }
-
-  const safeColumns = currentColumns.map((width, index) =>
-    safeMinColumnWidth + Math.round(flexibleTotal ? (flexibleWidths[index] / flexibleTotal) * extraWidth : extraWidth / currentColumns.length)
-  )
-  let diff = safeTotalWidth - safeColumns.reduce((sum, width) => sum + width, 0)
-  for (let index = safeColumns.length - 1; index >= 0 && diff !== 0; index -= 1) {
-    if (diff > 0) {
-      safeColumns[index] += diff
-      diff = 0
-    } else {
-      const reducibleWidth = Math.min(safeColumns[index] - safeMinColumnWidth, Math.abs(diff))
-      safeColumns[index] -= reducibleWidth
-      diff += reducibleWidth
-    }
-  }
-  return safeColumns
-}
-
-const normalizeResizeRows = (rows, totalHeight) => {
-  const safeRows = rows.map((height) => Math.max(Math.round(height), MIN_TABLE_ROW_HEIGHT))
-  const currentTotal = safeRows.reduce((sum, height) => sum + height, 0)
-
-  if (!currentTotal || Math.abs(currentTotal - totalHeight) < 1) {
-    return safeRows
-  }
-
-  const diff = Math.round(totalHeight - currentTotal)
-  safeRows[safeRows.length - 1] = Math.max(
-    MIN_TABLE_ROW_HEIGHT,
-    safeRows[safeRows.length - 1] + diff
-  )
-  return safeRows
-}
 
 const setEditorTableLayoutMetadata = (tableElement, tableIndex, layout) => {
   const resolvedTableIndex =
@@ -1522,51 +1307,30 @@ const updateTableResizeDragState = (dragState, clientX, clientY) => {
       : getEditorLayoutTableElements().indexOf(tableElement)
   const delta = clientX - startX
   const deltaY = clientY - startY
-  let nextWidth = startWidth
-  let nextColumns = [...startColumns]
-  let nextHeight = startRows.length ? startHeight : null
-  let nextRows = [...startRows]
 
-  if (kind === 'table') {
-    nextWidth = Math.min(Math.max(startWidth + delta, minWidth), maxWidth)
-    const scale = nextWidth / startWidth
-    nextColumns = normalizeResizeColumns(startColumns.map((width) => width * scale), nextWidth, minColumnWidth)
-  } else if (kind === 'table-height') {
-    nextHeight = Math.max(startHeight + deltaY, minHeight)
-    const scale = nextHeight / startHeight
-    nextRows = normalizeResizeRows(startRows.map((height) => height * scale), nextHeight)
-  } else if (kind === 'row') {
-    const currentRowHeight = startRows[rowIndex]
-    if (!Number.isFinite(currentRowHeight)) {
-      return
-    }
+  // 位移到布局的换算全部收在 utils/tableResize.js（有单测），这里只负责把结果落到 DOM。
+  const nextLayout = computeTableResizeLayout({
+    kind,
+    delta,
+    deltaY,
+    startWidth,
+    startHeight,
+    startColumns,
+    startRows,
+    maxWidth,
+    minWidth,
+    minColumnWidth,
+    minHeight,
+    columnIndex,
+    rowIndex,
+  })
 
-    const safeDeltaY = Math.max(deltaY, MIN_TABLE_ROW_HEIGHT - currentRowHeight)
-    nextRows[rowIndex] = Math.round(currentRowHeight + safeDeltaY)
-    nextHeight = nextRows.reduce((sum, height) => sum + height, 0)
-    nextRows = normalizeResizeRows(nextRows, nextHeight)
-  } else {
-    const leftWidth = startColumns[columnIndex]
-    const rightWidth = startColumns[columnIndex + 1]
-    const safeDelta = Math.min(
-      Math.max(delta, minColumnWidth - leftWidth),
-      rightWidth - minColumnWidth
-    )
-
-    nextColumns[columnIndex] = Math.round(leftWidth + safeDelta)
-    nextColumns[columnIndex + 1] = Math.round(rightWidth - safeDelta)
-    nextWidth = startWidth
+  if (!nextLayout) {
+    return
   }
 
-  const nextLayout = {
-    width: nextWidth,
-    columns: nextColumns,
-  }
-  if (nextRows.length && nextHeight) {
-    nextLayout.height = nextHeight
-    nextLayout.rows = nextRows
-  }
-
+  const nextWidth = nextLayout.width
+  const nextHeight = nextLayout.height
   const normalizedLayout = normalizeTableLayout(
     nextLayout,
     getTableColumnCount(tableElement),
@@ -1614,9 +1378,9 @@ const updateTableResizeDragState = (dragState, clientX, clientY) => {
       : kind === 'table-height'
       ? `${Math.round(appliedLayout.height || nextHeight || tableRect.height)}px`
       : kind === 'row'
-      ? `${Math.round(appliedLayout.rows?.[rowIndex] || nextRows[rowIndex] || tableRect.height)}px`
-      : `${Math.round(appliedLayout.columns?.[columnIndex] || nextColumns[columnIndex])}px / ${Math.round(
-          appliedLayout.columns?.[columnIndex + 1] || nextColumns[columnIndex + 1]
+      ? `${Math.round(appliedLayout.rows?.[rowIndex] || nextLayout.rows?.[rowIndex] || tableRect.height)}px`
+      : `${Math.round(appliedLayout.columns?.[columnIndex] || nextLayout.columns?.[columnIndex])}px / ${Math.round(
+          appliedLayout.columns?.[columnIndex + 1] || nextLayout.columns?.[columnIndex + 1]
         )}px`
 
   showTableResizeSizeHint(
@@ -1745,7 +1509,6 @@ const startTableResizeDrag = (event, resizeInfo = null) => {
   window.addEventListener('mousemove', moveListener, true)
   window.addEventListener('mouseup', endListener, true)
   updateTableResizeDragState(dragState, event.clientX, event.clientY)
-  hideToolbar()
   hideTableActionPanel()
   hideTableHoverControl()
   clearNativeTableCellVisualSelection()
@@ -1781,6 +1544,8 @@ const resetNativeTableCellSelectionDrag = () => {
   nativeTableCellSelectionDragging = false
   nativeTableCellSelectionMoved = false
 }
+
+const tableCellTypeNames = ['tableHeadCell', 'tableBodyCell']
 
 const getDomTableCellFromResolvedPos = (view, $pos) => {
   if (!view || !$pos) {
@@ -1998,13 +1763,6 @@ const scheduleToastTableContextMenuPlacement = (event) => {
   })
 }
 
-const hideHoverBlockHint = () => {
-  hoverBlockHintVisible.value = false
-  hoverBlockHint.label = ''
-  hoverBlockHint.top = -9999
-  hoverBlockHint.left = -9999
-}
-
 const getElementsBoundingRect = (elements) => {
   const rects = elements
     .filter((element) => element?.isConnected && editorRoot.value?.contains(element))
@@ -2154,21 +1912,21 @@ const openTableActionPanelFromHoverControl = () => {
   hideTableHoverControl()
 }
 
-const cancelToolbarSync = () => {
-  if (toolbarSyncFrame !== null) {
-    window.cancelAnimationFrame(toolbarSyncFrame)
-    toolbarSyncFrame = null
+const cancelToolbarStateSync = () => {
+  if (toolbarStateFrame !== null) {
+    window.cancelAnimationFrame(toolbarStateFrame)
+    toolbarStateFrame = null
   }
 }
 
-const scheduleToolbarSync = () => {
-  if (toolbarSyncFrame !== null) {
+const scheduleToolbarStateSync = () => {
+  if (toolbarStateFrame !== null) {
     return
   }
 
-  toolbarSyncFrame = window.requestAnimationFrame(() => {
-    toolbarSyncFrame = null
-    syncToolbarPosition()
+  toolbarStateFrame = window.requestAnimationFrame(() => {
+    toolbarStateFrame = null
+    syncToolbarState()
   })
 }
 
@@ -2177,189 +1935,6 @@ const isRectInViewport = (rect) =>
   rect.top < window.innerHeight &&
   rect.right > 0 &&
   rect.left < window.innerWidth
-
-const resolveHoverBlockLabel = (element) => {
-  if (!element) {
-    return ''
-  }
-
-  if (element.closest('.toastui-editor-ww-code-block')) {
-    return '代码块'
-  }
-
-  const tagName = element.tagName?.toLowerCase()
-  if (!tagName) {
-    return ''
-  }
-
-  if (tagName === 'blockquote') {
-    return '引用'
-  }
-
-  if (tagName === 'li') {
-    return '列表项'
-  }
-
-  if (tagName === 'h1') {
-    return '一级标题'
-  }
-
-  if (tagName === 'h2') {
-    return '二级标题'
-  }
-
-  if (tagName === 'h3') {
-    return '三级标题'
-  }
-
-  if (tagName === 'h4') {
-    return '四级标题'
-  }
-
-  if (tagName === 'h5') {
-    return '五级标题'
-  }
-
-  if (tagName === 'h6') {
-    return '六级标题'
-  }
-
-  if (tagName === 'pre') {
-    return '代码块'
-  }
-
-  if (tagName === 'table') {
-    return '表格'
-  }
-
-  if (tagName === 'hr') {
-    return '分隔线'
-  }
-
-  if (tagName === 'p') {
-    return '正文'
-  }
-
-  return ''
-}
-
-const getHoverBlockElement = (target, editorContents) => {
-  if (!(target instanceof Node) || !editorContents?.contains(target)) {
-    return null
-  }
-
-  const baseElement = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement
-  return baseElement?.closest?.(
-    '.toastui-editor-ww-code-block, h1, h2, h3, h4, h5, h6, p, li, blockquote, pre, table, hr'
-  )
-}
-
-const getNodeFromPoint = (x, y) => {
-  try {
-    if (typeof document.caretRangeFromPoint === 'function') {
-      const range = document.caretRangeFromPoint(x, y)
-      if (range?.startContainer) {
-        return range.startContainer
-      }
-    }
-
-    if (typeof document.caretPositionFromPoint === 'function') {
-      const position = document.caretPositionFromPoint(x, y)
-      if (position?.offsetNode) {
-        return position.offsetNode
-      }
-    }
-  } catch {
-    // Fallback below.
-  }
-
-  return document.elementFromPoint(x, y)
-}
-
-const updateHoverBlockHint = (event) => {
-  if (tableResizeHandleVisible.value || tableResizeHandleDragging.value) {
-    hideHoverBlockHint()
-    return
-  }
-
-  if (tableHoverControlVisible.value) {
-    hideHoverBlockHint()
-    return
-  }
-
-  const pointerNode = getNodeFromPoint(event.clientX, event.clientY)
-  const pointerElement =
-    pointerNode instanceof Node
-      ? pointerNode.nodeType === Node.ELEMENT_NODE
-        ? pointerNode
-        : pointerNode.parentElement
-      : null
-
-  if (pointerElement?.closest?.('.table-hover-control')) {
-    hideHoverBlockHint()
-    return
-  }
-
-  if (
-    toolbarVisible.value ||
-    event.buttons > 0 ||
-    nativeTableCellSelectionDragging ||
-    tableMultiCellSelectionActive.value ||
-    nativeTableCellSelectionRect
-  ) {
-    hideHoverBlockHint()
-    hideTableHoverControl()
-    return
-  }
-
-  if (!(pointerNode instanceof Node)) {
-    hideHoverBlockHint()
-    return
-  }
-
-  if (!pointerElement) {
-    hideHoverBlockHint()
-    hideTableHoverControl()
-    return
-  }
-
-  const editorContents = pointerElement.closest?.('.toastui-editor-contents')
-  if (!editorContents || !editorRoot.value?.contains(editorContents)) {
-    hideHoverBlockHint()
-    hideTableHoverControl()
-    return
-  }
-
-  const tableCellElement = pointerElement.closest?.('td, th')
-  if (tableCellElement && editorRoot.value?.contains(tableCellElement)) {
-    hideHoverBlockHint()
-    return
-  }
-
-  hideTableHoverControl()
-
-  const blockElement = getHoverBlockElement(pointerNode, editorContents)
-  const label = resolveHoverBlockLabel(blockElement)
-  if (!blockElement || !label) {
-    hideHoverBlockHint()
-    return
-  }
-
-  const rect = blockElement.getBoundingClientRect()
-  if (!isRectInViewport(rect)) {
-    hideHoverBlockHint()
-    return
-  }
-
-  const hintWidth = 112
-  hoverBlockHint.label = label
-  hoverBlockHint.top = Math.max(event.clientY - 34, 8)
-  hoverBlockHint.left = Math.min(
-    Math.max(event.clientX + 12, 12),
-    Math.max(12, window.innerWidth - hintWidth - 12)
-  )
-  hoverBlockHintVisible.value = true
-}
 
 const hideFloatingPreview = () => {
   floatingPreviewVisible.value = false
@@ -2387,47 +1962,7 @@ const showFloatingPreview = () => {
   }, 1800)
 }
 
-const getEditorSelection = () => {
-  const view = getWysiwygView()
-  const stateSelection = view?.state?.selection
-  if (!view || !stateSelection || stateSelection.empty) {
-    return null
-  }
-
-  return [stateSelection.from, stateSelection.to]
-}
-
-const isSameSelectionRange = (rangeA, rangeB) =>
-  Boolean(rangeA && rangeB && rangeA[0] === rangeB[0] && rangeA[1] === rangeB[1])
-
-const resetToolbarState = () => {
-  toolbarSelectionInTable.value = false
-  toolbarState.strong.active = false
-  toolbarState.strong.full = false
-  toolbarState.italic.active = false
-  toolbarState.italic.full = false
-  toolbarState.strike.active = false
-  toolbarState.strike.full = false
-  toolbarState.code.active = false
-  toolbarState.code.full = false
-  toolbarState.cellAlignLeft.active = false
-  toolbarState.cellAlignLeft.full = false
-  toolbarState.cellAlignCenter.active = false
-  toolbarState.cellAlignCenter.full = false
-  toolbarState.cellAlignRight.active = false
-  toolbarState.cellAlignRight.full = false
-  toolbarState.blockQuote.active = false
-  toolbarState.blockQuote.full = false
-  toolbarState.codeBlock.active = false
-  toolbarState.codeBlock.full = false
-  toolbarState.horizontalRule.active = false
-  toolbarState.horizontalRule.full = false
-
-  headingOptions.forEach((option) => {
-    toolbarState.headings[option.value].active = false
-    toolbarState.headings[option.value].full = false
-  })
-}
+const getWysiwygView = () => editorInstance?.wwEditor?.view || null
 
 const getTrailingHorizontalRuleInfo = (selection) => {
   if (!selection || selection.$to.depth < 1) {
@@ -2512,187 +2047,6 @@ const hasActiveEditorTextSelection = () => {
 
   return getSelectionTextSegments(view).length > 0
 }
-
-const setToolbarToggleState = (target, active, full) => {
-  target.active = active
-  target.full = full
-}
-
-const tableCellTypeNames = ['tableHeadCell', 'tableBodyCell']
-
-const addTableCellEntryFromResolvedPos = (entries, $pos) => {
-  if (!$pos) {
-    return
-  }
-
-  for (let depth = $pos.depth; depth > 0; depth -= 1) {
-    const node = $pos.node(depth)
-    if (tableCellTypeNames.includes(node.type?.name)) {
-      entries.set($pos.before(depth), { pos: $pos.before(depth), node })
-      return
-    }
-  }
-}
-
-const collectSelectedTableCellEntries = (view) => {
-  const selection = view?.state?.selection
-  if (!view || !selection) {
-    return []
-  }
-
-  const entries = new Map()
-
-  if (selection.isCellSelection && selection.ranges?.length) {
-    selection.ranges.forEach((range) => {
-      addTableCellEntryFromResolvedPos(entries, range.$from)
-    })
-  } else {
-    addTableCellEntryFromResolvedPos(entries, selection.$from)
-    addTableCellEntryFromResolvedPos(entries, selection.$to)
-
-    view.state.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
-      if (tableCellTypeNames.includes(node.type?.name)) {
-        entries.set(pos, { pos, node })
-        return false
-      }
-
-      return true
-    })
-  }
-
-  return Array.from(entries.values())
-}
-
-const updateToolbarState = () => {
-  resetToolbarState()
-
-  const view = getWysiwygView()
-  const selection = view?.state?.selection
-  if (!view || !selection || selection.empty) {
-    return
-  }
-
-  const segments = getSelectionTextSegments(view)
-  if (!segments.length) {
-    return
-  }
-
-  const markDefinitions = [
-    ['strong', 'strong'],
-    ['italic', 'emph'],
-    ['strike', 'strike'],
-    ['code', 'code'],
-  ]
-
-  markDefinitions.forEach(([stateKey, markName]) => {
-    const markType = view.state.schema.marks[markName]
-    if (!markType) {
-      return
-    }
-
-    const hasAny = segments.some((segment) => markType.isInSet(segment.node.marks))
-    const hasFull = segments.every((segment) => markType.isInSet(segment.node.marks))
-    setToolbarToggleState(toolbarState[stateKey], hasAny, hasFull)
-  })
-
-  const isInsideBlockType = (segment, typeName) =>
-    segment.parentType === typeName || segment.ancestors.some((node) => node.type?.name === typeName)
-  const isInsideTableCell = (segment) =>
-    tableCellTypeNames.includes(segment.parentType) ||
-    segment.ancestors.some((node) => tableCellTypeNames.includes(node.type?.name))
-
-  toolbarSelectionInTable.value = segments.every(isInsideTableCell)
-
-  if (toolbarSelectionInTable.value) {
-    const selectedCells = collectSelectedTableCellEntries(view)
-    const isLeftAlignedCell = ({ node }) => !node.attrs?.align || node.attrs.align === 'left'
-    const hasCenterAlignedCell = selectedCells.some(({ node }) => node.attrs?.align === 'center')
-    const allCellsCenterAligned =
-      selectedCells.length > 0 && selectedCells.every(({ node }) => node.attrs?.align === 'center')
-    const hasRightAlignedCell = selectedCells.some(({ node }) => node.attrs?.align === 'right')
-    const allCellsRightAligned =
-      selectedCells.length > 0 && selectedCells.every(({ node }) => node.attrs?.align === 'right')
-    const hasLeftAlignedCell = selectedCells.some(isLeftAlignedCell)
-    const allCellsLeftAligned = selectedCells.length > 0 && selectedCells.every(isLeftAlignedCell)
-
-    setToolbarToggleState(toolbarState.cellAlignLeft, hasLeftAlignedCell, allCellsLeftAligned)
-    setToolbarToggleState(toolbarState.cellAlignCenter, hasCenterAlignedCell, allCellsCenterAligned)
-    setToolbarToggleState(toolbarState.cellAlignRight, hasRightAlignedCell, allCellsRightAligned)
-  }
-
-  setToolbarToggleState(
-    toolbarState.blockQuote,
-    segments.some((segment) => isInsideBlockType(segment, 'blockQuote')),
-    segments.every((segment) => isInsideBlockType(segment, 'blockQuote'))
-  )
-
-  setToolbarToggleState(
-    toolbarState.codeBlock,
-    segments.some((segment) => isInsideBlockType(segment, 'codeBlock')),
-    segments.every((segment) => isInsideBlockType(segment, 'codeBlock'))
-  )
-
-  const trailingHorizontalRule = getTrailingHorizontalRuleInfo(selection)
-  const hasTrailingHorizontalRule = trailingHorizontalRule?.nextNode?.type?.name === 'thematicBreak'
-  setToolbarToggleState(toolbarState.horizontalRule, hasTrailingHorizontalRule, hasTrailingHorizontalRule)
-
-  headingOptions.forEach((option) => {
-    const isHeading = (segment) =>
-      segment.parentType === 'heading' && Number(segment.parentAttrs.level) === option.value
-
-    setToolbarToggleState(
-      toolbarState.headings[option.value],
-      segments.some(isHeading),
-      segments.every(isHeading)
-    )
-  })
-}
-
-const getEditorSelectionRect = () => {
-  const view = getWysiwygView()
-  const stateSelection = view?.state?.selection
-  if (!view || !stateSelection || stateSelection.empty) {
-    return null
-  }
-
-  try {
-    const browserSelection = window.getSelection()
-    const browserRange = browserSelection?.rangeCount ? browserSelection.getRangeAt(0) : null
-    if (browserRange && editorRoot.value?.contains(browserRange.commonAncestorContainer)) {
-      const browserRects = Array.from(browserRange.getClientRects()).filter((r) => r.width > 0 || r.height > 0)
-      if (browserRects.length) {
-        const topRect = browserRects.reduce((best, r) => (r.top < best.top ? r : best), browserRects[0])
-        return topRect
-      }
-    }
-
-    const from = Math.min(stateSelection.from, stateSelection.to)
-    const to = Math.max(stateSelection.from, stateSelection.to)
-    const startRect = view.coordsAtPos(from)
-    const nextRect = view.coordsAtPos(Math.min(from + 1, to))
-    const sameLine = Math.abs(startRect.top - nextRect.top) < 2
-
-    return {
-      top: startRect.top,
-      bottom: startRect.bottom,
-      left: startRect.left,
-      right: sameLine
-        ? Math.max(startRect.right ?? startRect.left, nextRect.left, startRect.left + 1)
-        : Math.max(startRect.right ?? startRect.left, startRect.left + 1),
-      width: Math.max(
-        (sameLine
-          ? Math.max(startRect.right ?? startRect.left, nextRect.left, startRect.left + 1)
-          : Math.max(startRect.right ?? startRect.left, startRect.left + 1)) - startRect.left,
-        1
-      ),
-      height: Math.max(startRect.bottom - startRect.top, 1),
-    }
-  } catch {
-    return null
-  }
-}
-
-const getWysiwygView = () => editorInstance?.wwEditor?.view || null
 
 const buildTableInfo = (tableNode, tablePos, rowIndex, columnIndex, rowCount, columnCount) => ({
   tableNode,
@@ -2909,10 +2263,11 @@ const insertFixedToolbarLink = (payload) => {
 
 /**
  * 插入一段 Markdown 片段。
- * 公式与提示框是 toast-ui 不认识的扩展语法，无法用 exec 命令插入，
- * 因此直接在光标处写入文本，选中内容会被包裹其中。
+ *
+ * 块级片段（`$$…$$`）**不替换选中正文**：用户常先 Ctrl+A 再点按钮，
+ * 按替换处理会清空整篇笔记。只有行内公式 `$…$` 才把选中文字包进去。
  */
-const insertMarkdownSnippet = (before, after = '', placeholder = '') => {
+const insertMarkdownSnippet = (before, after = '', placeholder = '', options = {}) => {
   const view = getWysiwygView()
   if (!view || !editorInstance) {
     return
@@ -2923,17 +2278,46 @@ const insertMarkdownSnippet = (before, after = '', placeholder = '') => {
   const { state } = view
   const { from, to } = state.selection
   const selected = state.doc.textBetween(from, to, '\n')
-  const body = selected || placeholder
+  const wrapsSelection = Boolean(options.wrapSelection) && Boolean(selected.trim())
+
+  // 不包裹时把插入点折叠到选区末尾，原内容原样保留
+  const insertFrom = wrapsSelection ? from : to
+  const insertTo = to
+  const body = wrapsSelection ? selected : placeholder
   const text = `${before}${body}${after}`
 
-  const tr = state.tr.insertText(text, from, to)
-  // 选中占位文本，方便直接输入覆盖
-  if (!selected && placeholder) {
-    const placeholderStart = from + before.length
+  const tr = state.tr.insertText(text, insertFrom, insertTo)
+
+  if (wrapsSelection) {
+    const caret = insertFrom + text.length
+    tr.setSelection(TextSelection.create(tr.doc, caret, caret))
+  } else if (placeholder) {
+    // 选中占位文本，方便直接输入覆盖
+    const placeholderStart = insertFrom + before.length
     tr.setSelection(TextSelection.create(tr.doc, placeholderStart, placeholderStart + placeholder.length))
   }
+
   tr.scrollIntoView()
   view.dispatch(tr)
+
+  syncAfterFixedToolbarCommand()
+}
+
+/** 提示框按钮：同类型再点一次取消，换类型则就地改类型（不嵌套）。 */
+const applyFixedToolbarCallout = (kind = 'note') => {
+  const view = getWysiwygView()
+  if (!view) {
+    ElMessage.warning('编辑器尚未准备好，请稍后重试。')
+    return
+  }
+
+  restoreInsertionSelection()
+
+  const handled = applyWysiwygCallout(view, { kind })
+  if (!handled) {
+    ElMessage.warning('编辑器尚未准备好，请稍后重试。')
+    return
+  }
 
   syncAfterFixedToolbarCommand()
 }
@@ -2943,12 +2327,7 @@ const insertFixedToolbarMath = (displayMode) => {
     insertMarkdownSnippet('$$\n', '\n$$', 'E = mc^2')
     return
   }
-  insertMarkdownSnippet('$', '$', 'x^2')
-}
-
-const insertFixedToolbarCallout = (kind = 'note') => {
-  const label = kind.toUpperCase()
-  insertMarkdownSnippet(`> [!${label}]\n> `, '', '提示内容')
+  insertMarkdownSnippet('$', '$', 'x^2', { wrapSelection: true })
 }
 
 const resolveTableInfoFromCell = (cellElement) => {
@@ -3183,7 +2562,7 @@ const bindEditorSelectionListeners = () => {
     nextTick(() => {
       rememberEditorSelectionRange()
       syncTableMultiCellSelectionState()
-      scheduleToolbarSync()
+      scheduleToolbarStateSync()
 
       if (hasActiveEditorTextSelection()) {
         hideTableActionPanel()
@@ -3227,8 +2606,6 @@ const bindEditorSelectionListeners = () => {
     const cellElement = getTableCellFromEvent(event)
     const imageElement = getImageElementFromEvent(event)
 
-    hideToolbar()
-    hideHoverBlockHint()
     if (!imageElement) {
       hideImageToolbar()
     }
@@ -3274,10 +2651,9 @@ const bindEditorSelectionListeners = () => {
 
     if (hasVisualSelection) {
       tableMultiCellSelectionActive.value = true
-      hideHoverBlockHint()
       hideTableActionPanel()
       showTableHoverControl(focusCellElement, event.clientX, event.clientY)
-      scheduleToolbarSync()
+      scheduleToolbarStateSync()
     }
   }
 
@@ -3370,8 +2746,7 @@ const bindEditorSelectionListeners = () => {
 
     window.requestAnimationFrame(() => {
       updatePreviewFromEditor()
-      updateToolbarState()
-      scheduleToolbarSync()
+      scheduleToolbarStateSync()
     })
   }
 
@@ -3422,7 +2797,6 @@ const bindEditorHoverListeners = () => {
 
   const handleMouseMove = (event) => {
     updateTableResizeHandle(event)
-    updateHoverBlockHint(event)
   }
 
   document.addEventListener('mousemove', handleMouseMove, true)
@@ -3434,214 +2808,96 @@ const bindEditorHoverListeners = () => {
   }
 }
 
-const resolveCodeBlockPos = (view, rawPos) => {
-  const doc = view.state.doc
-  const candidates = [rawPos, rawPos - 1, rawPos + 1].filter(
-    (pos) => Number.isInteger(pos) && pos >= 0 && pos <= doc.content.size
-  )
+const getCodeBlockLanguage = (node) => getFenceLanguage(node?.attrs?.language || '')
 
-  for (const pos of candidates) {
-    const node = doc.nodeAt(pos)
-    if (node?.type?.name === 'codeBlock') {
-      return pos
-    }
+/** 修改代码块语言：只替换 info-string 的第一个词，保留其余参数。 */
+const promptCodeBlockLanguage = async (pos) => {
+  const view = getWysiwygView()
+  const node = view?.state.doc.nodeAt(pos)
+  if (!view || !node || node.type?.name !== 'codeBlock') {
+    return
   }
 
+  let nextLanguage = ''
   try {
-    const safePos = Math.max(0, Math.min(rawPos, doc.content.size))
-    const $pos = doc.resolve(safePos)
-
-    for (let depth = $pos.depth; depth >= 0; depth -= 1) {
-      if ($pos.node(depth)?.type?.name === 'codeBlock') {
-        return depth === 0 ? 0 : $pos.before(depth)
-      }
-    }
+    const { value } = await ElMessageBox.prompt('只修改语言，标题、行号与行标记会保留。', '代码块语言', {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputValue: getCodeBlockLanguage(node) === 'text' ? '' : getCodeBlockLanguage(node),
+      inputPlaceholder: 'js / py / bash（留空表示 text）',
+    })
+    nextLanguage = value
   } catch {
-    return null
-  }
-
-  return null
-}
-
-const getCodeBlockPos = (codeBlockElement) => {
-  const view = getWysiwygView()
-  if (!view || !codeBlockElement) {
-    return null
-  }
-
-  const candidates = [
-    codeBlockElement,
-    codeBlockElement.querySelector('pre'),
-    codeBlockElement.querySelector('code'),
-  ].filter(Boolean)
-
-  for (const candidate of candidates) {
-    try {
-      const rawPos = view.posAtDOM(candidate, 0)
-      const pos = resolveCodeBlockPos(view, rawPos)
-      if (pos !== null) {
-        return pos
-      }
-    } catch {
-      continue
-    }
-  }
-
-  return null
-}
-
-const getCodeBlockLanguageLabel = (codeBlockElement) => {
-  const language =
-    codeBlockElement?.getAttribute('data-language') ||
-    codeBlockElement?.querySelector('code')?.getAttribute('data-language') ||
-    ''
-
-  return language || 'text'
-}
-
-const syncCodeBlockLanguageChip = (codeBlockElement) => {
-  const chip = codeBlockElement?.querySelector('.inline-code-language-chip')
-  if (!chip) {
     return
   }
 
-  const label = getCodeBlockLanguageLabel(codeBlockElement)
-  chip.dataset.language = label
-  chip.textContent = label
-}
+  const currentInfo = node.attrs.language || ''
+  const nextInfo = replaceFenceLanguage(currentInfo, String(nextLanguage || '').trim())
 
-const updateCodeBlockLanguage = (codeBlockElement, value) => {
-  const view = getWysiwygView()
-  const pos = getCodeBlockPos(codeBlockElement)
-  if (!view || pos === null) {
+  if (currentInfo === nextInfo) {
     return
   }
 
-  const node = view.state.doc.nodeAt(pos)
-  if (!node || node.type?.name !== 'codeBlock') {
-    return
-  }
-
-  const nextLanguage = value.trim()
-  if ((node.attrs.language || '') === nextLanguage) {
-    syncCodeBlockLanguageChip(codeBlockElement)
-    return
-  }
-
-  const tr = view.state.tr.setNodeMarkup(pos, null, {
-    ...node.attrs,
-    language: nextLanguage,
-  })
-
-  view.dispatch(tr)
+  view.dispatch(
+    view.state.tr.setNodeMarkup(pos, null, {
+      ...node.attrs,
+      language: nextInfo,
+    })
+  )
   updatePreviewFromEditor()
 }
 
-const finishInlineCodeLanguageEdit = (save = true) => {
-  if (!activeCodeLanguageInput) {
+/** 打开代码块参数面板（富文本）：把当前 node 的 info-string 与代码回填进去。 */
+const openCodeBlockOptions = (pos) => {
+  const view = getWysiwygView()
+  const node = view?.state.doc.nodeAt(pos)
+  if (!view || !node || node.type?.name !== 'codeBlock') {
     return
   }
 
-  const input = activeCodeLanguageInput
-  const chip = activeCodeLanguageChip
-  const codeBlockElement = input.closest('.toastui-editor-ww-code-block')
-  const nextValue = input.value
-
-  activeCodeLanguageInput = null
-  activeCodeLanguageChip = null
-  input.remove()
-
-  if (chip) {
-    chip.hidden = false
-  }
-
-  if (save && codeBlockElement) {
-    updateCodeBlockLanguage(codeBlockElement, nextValue)
-  } else if (codeBlockElement) {
-    syncCodeBlockLanguageChip(codeBlockElement)
-  }
+  codeOptionsTarget.value = { kind: 'wysiwyg', pos }
+  codeOptionsInfo.value = node.attrs.language || ''
+  codeOptionsCode.value = node.textContent || ''
+  codeOptionsVisible.value = true
 }
 
-const openInlineCodeLanguageEditor = (codeBlockElement) => {
-  const chip = codeBlockElement?.querySelector('.inline-code-language-chip')
-  if (!chip) {
+/** 应用参数面板结果：写回 codeBlock 的 info-string。 */
+const applyCodeBlockOptions = (info) => {
+  const target = codeOptionsTarget.value
+  const view = getWysiwygView()
+  const node = view && Number.isInteger(target?.pos) ? view.state.doc.nodeAt(target.pos) : null
+
+  if (!view || !node || node.type?.name !== 'codeBlock') {
+    ElMessage.warning('没有找到要修改的代码块。')
     return
   }
 
-  if (activeCodeLanguageInput?.closest('.toastui-editor-ww-code-block') === codeBlockElement) {
-    activeCodeLanguageInput.focus()
-    activeCodeLanguageInput.select()
-    return
-  }
+  view.dispatch(
+    view.state.tr.setNodeMarkup(target.pos, null, {
+      ...node.attrs,
+      language: info,
+    })
+  )
+  updatePreviewFromEditor()
 
-  finishInlineCodeLanguageEdit(true)
-
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.className = 'inline-code-language-input'
-  input.value =
-    codeBlockElement.getAttribute('data-language') === 'text'
-      ? ''
-      : codeBlockElement.getAttribute('data-language') || ''
-  input.placeholder = 'text'
-  input.setAttribute('aria-label', '代码块语言')
-
-  const finish = (save) => {
-    finishInlineCodeLanguageEdit(save)
-  }
-
-  input.addEventListener('blur', () => finish(true), { once: true })
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      finish(true)
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      finish(false)
-    }
-  })
-
-  chip.hidden = true
-  codeBlockElement.appendChild(input)
-  activeCodeLanguageInput = input
-  activeCodeLanguageChip = chip
-
-  window.requestAnimationFrame(() => {
-    input.focus()
-    input.select()
-  })
+  codeOptionsTarget.value = null
+  codeOptionsInfo.value = ''
+  codeOptionsCode.value = ''
 }
 
-const decorateCodeBlocks = () => {
-  const codeBlocks = editorRoot.value?.querySelectorAll('.toastui-editor-ww-code-block')
-  if (!codeBlocks?.length) {
+/** 面板打开时的代码块位置会随编辑位移，重新定位到当前选区所在的代码块。 */
+const openCodeBlockOptionsAtSelection = () => {
+  const view = getWysiwygView()
+  const info = getSelectedCodeBlockInfo(view)
+
+  if (!view || !info) {
+    ElMessage.info('把光标放进一个代码块里，再打开代码块设置。')
     return
   }
 
-  codeBlocks.forEach((codeBlockElement) => {
-    let chip = codeBlockElement.querySelector('.inline-code-language-chip')
-
-    if (!chip) {
-      chip = document.createElement('button')
-      chip.type = 'button'
-      chip.className = 'inline-code-language-chip'
-      chip.title = '修改代码块语言'
-      chip.addEventListener('mousedown', (event) => {
-        event.preventDefault()
-      })
-      chip.addEventListener('click', (event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        openInlineCodeLanguageEditor(codeBlockElement)
-      })
-      codeBlockElement.appendChild(chip)
-    }
-
-    syncCodeBlockLanguageChip(codeBlockElement)
-  })
+  openCodeBlockOptions(info.pos)
 }
+
 
 const updatePreviewFromEditor = () => {
   if (!editorInstance) {
@@ -3657,263 +2913,28 @@ const updatePreviewFromEditor = () => {
   hideImageToolbar()
 
   window.requestAnimationFrame(() => {
-    decorateCodeBlocks()
     applyStoredTableLayoutsToEditor()
   })
 }
 
-const syncToolbarPosition = () => {
-  if (isFixedToolbarMode.value) {
-    hideToolbar()
-    return
-  }
-
-  if (!editorInstance || !floatingToolbar.value) {
-    return
-  }
-
-  const editorSelection = getEditorSelection()
-  if (!editorSelection) {
-    hideToolbar()
-    return
-  }
-
-  hideHoverBlockHint()
-
-  const rect = getEditorSelectionRect()
-  if (!rect) {
-    hideToolbar()
-    return
-  }
-
-  if (!isRectInViewport(rect)) {
-    hideToolbar()
-    return
-  }
-
-  const wasSelectionInTable = toolbarSelectionInTable.value
-  updateToolbarState()
-
-  if (!toolbarVisible.value) {
-    toolbarVisible.value = true
-
-    nextTick(() => {
-      scheduleToolbarSync()
-    })
-    return
-  }
-
-  const toolbarRect = floatingToolbar.value.getBoundingClientRect()
-  if (toolbarRect.width === 0 || toolbarRect.height === 0) {
-    return
-  }
-
-  const horizontalPadding = 12
-  const desiredTop = rect.top - toolbarRect.height - 10
-  const minTop = 8
-  const desiredLeft = rect.left + rect.width / 2 - toolbarRect.width / 2
-  const maxLeft = window.innerWidth - toolbarRect.width - horizontalPadding
-  const keepCurrentLeft = toolbarVisible.value && isSameSelectionRange(selectionRange.value, editorSelection)
-  const nextLeft = keepCurrentLeft ? toolbarPosition.left : desiredLeft
-
-  selectionRange.value = editorSelection
-  toolbarPosition.top = Math.max(desiredTop, minTop)
-  toolbarPosition.left = Math.min(Math.max(nextLeft, horizontalPadding), Math.max(horizontalPadding, maxLeft))
-
-  if (wasSelectionInTable !== toolbarSelectionInTable.value) {
-    nextTick(() => {
-      scheduleToolbarSync()
-    })
-  }
-}
-
-const restoreSelection = () => {
-  if (!editorInstance || !selectionRange.value) {
-    return
-  }
-
-  try {
-    const [start, end] = selectionRange.value
-    editorInstance.focus()
-    editorInstance.setSelection(start, end)
-  } catch {
-    hideToolbar()
-  }
-}
-
-const applyInlineMark = (stateKey, markName) => {
-  const view = getWysiwygView()
-  const selection = view?.state?.selection
-  const markType = view?.state?.schema?.marks?.[markName]
-
-  if (!view || !selection || selection.empty || !markType) {
-    return
-  }
-
-  const shouldRemove = toolbarState[stateKey].full
-  const tr = shouldRemove
-    ? view.state.tr.removeMark(selection.from, selection.to, markType)
-    : view.state.tr.addMark(selection.from, selection.to, markType.create())
-
-  view.dispatch(tr.scrollIntoView())
-}
-
-const applySelectedTableCellAlign = (align = null) => {
-  const view = getWysiwygView()
-  const selectedCells = collectSelectedTableCellEntries(view)
-
-  if (!view || !selectedCells.length) {
-    return
-  }
-
-  const tr = view.state.tr
-  const nextAlign = align === 'left' ? null : align
-
-  selectedCells.forEach(({ pos, node }) => {
-    tr.setNodeMarkup(pos, null, {
-      ...node.attrs,
-      align: nextAlign,
-    })
-  })
-
-  if (tr.docChanged) {
-    view.dispatch(tr.scrollIntoView())
-  }
-
-  view.focus()
-}
-
-const runEditorCommand = (command, payload) => {
-  if (!editorInstance) {
-    return
-  }
-
-  restoreSelection()
-
-  if (command === 'strong') {
-    applyInlineMark('strong', 'strong')
-  } else if (command === 'italic') {
-    applyInlineMark('italic', 'emph')
-  } else if (command === 'strike') {
-    applyInlineMark('strike', 'strike')
-  } else if (command === 'code') {
-    applyInlineMark('code', 'code')
-  } else if (command === 'tableCellAlignLeft') {
-    applySelectedTableCellAlign('left')
-  } else if (command === 'tableCellAlignCenter') {
-    applySelectedTableCellAlign('center')
-  } else if (command === 'tableCellAlignRight') {
-    applySelectedTableCellAlign('right')
-  } else {
-    editorInstance.exec(command, payload)
-  }
-
-  updatePreviewFromEditor()
-  updateToolbarState()
-
-  nextTick(() => {
-    scheduleToolbarSync()
-  })
-}
-
-const applyHeading = (level) => {
-  if (!editorInstance) {
-    return
-  }
-
-  restoreSelection()
-  const view = getWysiwygView()
-  const selection = view?.state?.selection
-  const paragraphType = view?.state?.schema?.nodes?.paragraph
-  const headingType = view?.state?.schema?.nodes?.heading
-
-  if (!view || !selection || selection.empty || !paragraphType || !headingType) {
-    return
-  }
-
-  const shouldResetToParagraph = toolbarState.headings[level].full
-  const tr = shouldResetToParagraph
-    ? view.state.tr.setBlockType(selection.from, selection.to, paragraphType)
-    : view.state.tr.setBlockType(selection.from, selection.to, headingType, { level })
-
-  view.dispatch(tr.scrollIntoView())
-  updatePreviewFromEditor()
-  updateToolbarState()
-
-  nextTick(() => {
-    scheduleToolbarSync()
-  })
-}
-
-const applyBlockQuote = () => {
-  if (!editorInstance) {
-    return
-  }
-
-  restoreSelection()
+/**
+ * 顶部固定工具栏的状态刷新。
+ *
+ * 悬浮工具条已移除，这里只负责两件事：
+ *   - 把当前选区的格式状态同步给固定工具栏（按钮高亮 / aria-pressed）
+ *   - 记录「❢」当前所处的提示框类型，用于切换与取消
+ */
+const syncToolbarState = () => {
+  updateFixedToolbarSnapshot()
 
   const view = getWysiwygView()
-  const selection = view?.state?.selection
-  const blockQuoteType = view?.state?.schema?.nodes?.blockQuote
-
-  if (!view || !selection || selection.empty || !blockQuoteType) {
-    return
-  }
-
-  if (toolbarState.blockQuote.full) {
-    const range = selection.$from.blockRange(selection.$to, (node) => node.type === blockQuoteType)
-    const target = range ? liftTarget(range) : null
-
-    if (range && target !== null) {
-      view.dispatch(view.state.tr.lift(range, target).scrollIntoView())
-    }
-  } else {
-    wrapIn(blockQuoteType)(view.state, view.dispatch, view)
-  }
-
-  updatePreviewFromEditor()
-  updateToolbarState()
-
-  nextTick(() => {
-    scheduleToolbarSync()
-  })
+  activeCalloutType.value = view ? getActiveCalloutType(view.state).toLowerCase() : ''
 }
 
-const applyCodeBlock = () => {
-  if (!editorInstance) {
-    return
-  }
-
-  restoreSelection()
-
-  const view = getWysiwygView()
-  const selection = view?.state?.selection
-  const paragraphType = view?.state?.schema?.nodes?.paragraph
-  const codeBlockType = view?.state?.schema?.nodes?.codeBlock
-
-  if (!view || !selection || selection.empty || !paragraphType || !codeBlockType) {
-    return
-  }
-
-  if (toolbarState.codeBlock.full) {
-    const tr = view.state.tr.setBlockType(selection.from, selection.to, paragraphType)
-    view.dispatch(tr.scrollIntoView())
-  } else {
-    const selectedText = view.state.doc.textBetween(selection.from, selection.to, '\n')
-    const codeBlockNode = codeBlockType.create(null, view.state.schema.text(selectedText))
-    const tr = view.state.tr.replaceSelectionWith(codeBlockNode, false)
-    const textStart = Math.min(selection.from + 1, tr.doc.content.size)
-    const textEnd = textStart + selectedText.length
-    tr.setSelection(TextSelection.create(tr.doc, textStart, textEnd)).scrollIntoView()
-    view.dispatch(tr)
-  }
-
-  updatePreviewFromEditor()
-  updateToolbarState()
-
-  nextTick(() => {
-    scheduleToolbarSync()
-  })
+/** 顶部工具栏「⋯」：对选区所在代码块打开参数面板。 */
+const openFixedToolbarCodeBlockOptions = () => {
+  restoreInsertionSelection()
+  openCodeBlockOptionsAtSelection()
 }
 
 const normalizeCodeIndent = (code) => {
@@ -4028,6 +3049,12 @@ const formatCodeBlockContent = (code, language = '') => {
   return formatBracketIndentedCode(normalizedCode)
 }
 
+/**
+ * 找到选区"涉及"的代码块。
+ *
+ * 先看光标祖先链；找不到时再看选区覆盖范围——用户按 Ctrl+A 全选时
+ * `$from` 落在文档开头，并不在代码块里，但意图显然是操作这个代码块。
+ */
 const getSelectedCodeBlockInfo = (view) => {
   const selection = view?.state?.selection
   if (!view || !selection || selection.empty) {
@@ -4042,15 +3069,27 @@ const getSelectedCodeBlockInfo = (view) => {
     }
   }
 
-  return null
+  let found = null
+  view.state.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+    if (found) {
+      return false
+    }
+    if (node.type.name === 'codeBlock') {
+      found = { node, pos }
+      return false
+    }
+    return true
+  })
+
+  return found
 }
 
 const applyCodeBlockAutoFormat = () => {
-  if (!editorInstance || !toolbarState.codeBlock.full) {
+  if (!editorInstance || !fixedToolbarState.codeBlock.full) {
     return
   }
 
-  restoreSelection()
+  restoreInsertionSelection()
 
   const view = getWysiwygView()
   const codeBlockInfo = getSelectedCodeBlockInfo(view)
@@ -4062,7 +3101,6 @@ const applyCodeBlockAutoFormat = () => {
   const formattedCode = formatCodeBlockContent(node.textContent || '', node.attrs?.language || '')
 
   if (formattedCode === node.textContent) {
-    updateToolbarState()
     return
   }
 
@@ -4074,10 +3112,9 @@ const applyCodeBlockAutoFormat = () => {
   tr.setSelection(TextSelection.create(tr.doc, contentStart, selectionEnd)).scrollIntoView()
   view.dispatch(tr)
   updatePreviewFromEditor()
-  updateToolbarState()
 
   nextTick(() => {
-    scheduleToolbarSync()
+    scheduleToolbarStateSync()
   })
 }
 
@@ -4132,21 +3169,6 @@ const findFirstTableCellTextPos = (doc, from, to) => {
   })
 
   return textPos
-}
-
-const applySelectedTable = (rows, columns) => {
-  sideTablePickerVisible.value = false
-  applyTable(rows, columns)
-}
-
-const toggleSideTablePicker = () => {
-  if (!editorReady.value) {
-    return
-  }
-
-  hideTableActionPanel()
-  rememberEditorSelectionRange()
-  sideTablePickerVisible.value = !sideTablePickerVisible.value
 }
 
 const applyTable = (rowCount = 3, columnCount = 3) => {
@@ -4205,11 +3227,10 @@ const applyTable = (rowCount = 3, columnCount = 3) => {
   }
 
   updatePreviewFromEditor()
-  updateToolbarState()
   updateFixedToolbarSnapshot()
 
   nextTick(() => {
-    scheduleToolbarSync()
+    scheduleToolbarStateSync()
   })
 }
 
@@ -4410,11 +3431,10 @@ const replaceActiveTable = (nextTableNode, nextRowIndex, nextColumnIndex, nextLa
   }
 
   updatePreviewFromEditor()
-  updateToolbarState()
   updateEditorTableLayoutStyles()
 
   nextTick(() => {
-    scheduleToolbarSync()
+    scheduleToolbarStateSync()
   })
 }
 
@@ -4641,11 +3661,10 @@ const deleteActiveTable = () => {
   hideTableHoverControl()
   hideTableActionPanel()
   updatePreviewFromEditor()
-  updateToolbarState()
   ElMessage.success('已删除表格')
 
   nextTick(() => {
-    scheduleToolbarSync()
+    scheduleToolbarStateSync()
   })
 }
 
@@ -4785,65 +3804,6 @@ const splitSelectedTableCell = () => {
   hideTableActionPanel()
 }
 
-const applyHorizontalRule = () => {
-  if (!editorInstance) {
-    return
-  }
-
-  restoreSelection()
-
-  const view = getWysiwygView()
-  const selection = view?.state?.selection
-  const thematicBreakType = view?.state?.schema?.nodes?.thematicBreak
-  const paragraphType = view?.state?.schema?.nodes?.paragraph
-
-  if (!view || !selection || !thematicBreakType || !paragraphType || selection.$to.depth < 1) {
-    return
-  }
-
-  const trailingHorizontalRule = getTrailingHorizontalRuleInfo(selection)
-  if (!trailingHorizontalRule) {
-    return
-  }
-
-  const { insertPos, nextNode, nextNodePos, rootBlock } = trailingHorizontalRule
-
-  if (toolbarState.horizontalRule.full && nextNode?.type === thematicBreakType && nextNodePos !== null) {
-    const tr = view.state.tr.delete(nextNodePos, nextNodePos + nextNode.nodeSize)
-    view.dispatch(tr.scrollIntoView())
-    updatePreviewFromEditor()
-    updateToolbarState()
-
-    nextTick(() => {
-      scheduleToolbarSync()
-    })
-    return
-  }
-
-  if (nextNode?.type === thematicBreakType) {
-    updateToolbarState()
-    nextTick(() => {
-      scheduleToolbarSync()
-    })
-    return
-  }
-
-  const isLastBlock = view.state.doc.child(view.state.doc.childCount - 1) === rootBlock
-  const shouldAppendParagraph = isLastBlock
-  const tr = view.state.tr.insert(insertPos, thematicBreakType.create())
-
-  if (shouldAppendParagraph) {
-    tr.insert(insertPos + 1, paragraphType.create())
-  }
-
-  view.dispatch(tr.scrollIntoView())
-  updatePreviewFromEditor()
-  updateToolbarState()
-
-  nextTick(() => {
-    scheduleToolbarSync()
-  })
-}
 
 const buildEditor = () => {
   if (!editorRoot.value) {
@@ -4862,6 +3822,15 @@ const buildEditor = () => {
     usageStatistics: false,
     toolbarItems: [],
     autofocus: false,
+    // 富文本面板里的提示框 / 代码块即时预览（decoration，不改变文档内容）
+    plugins: [
+      createRichBlockPreview({
+        onEditLanguage: (pos) => promptCodeBlockLanguage(pos),
+        onEditOptions: (pos) => openCodeBlockOptions(pos),
+        // 光标停在提示框标记行且正在输入时，保留原文以便修改类型与标题
+        isEditorFocused: () => Boolean(getWysiwygView()?.hasFocus?.()),
+      }),
+    ],
     hooks: {
       addImageBlobHook: uploadEditorImage,
     },
@@ -4875,7 +3844,7 @@ const buildEditor = () => {
           rememberEditorSelectionRange()
           updateFixedToolbarSnapshot()
           syncTableMultiCellSelectionState()
-          scheduleToolbarSync()
+          scheduleToolbarStateSync()
         })
       },
       focus: () => {
@@ -4883,17 +3852,13 @@ const buildEditor = () => {
           rememberEditorSelectionRange()
           updateFixedToolbarSnapshot()
           syncTableMultiCellSelectionState()
-          scheduleToolbarSync()
+          scheduleToolbarStateSync()
         })
       },
       blur: () => {
-        window.setTimeout(() => {
-          const active = document.activeElement
-          if (floatingToolbar.value?.contains(active)) {
-            return
-          }
-          hideToolbar()
-        }, 120)
+        nextTick(() => {
+          syncTableMultiCellSelectionState()
+        })
       },
     },
   })
@@ -5112,6 +4077,21 @@ const goToDetail = () => {
   router.push({ name: 'note-detail', params: { id: route.params.id } })
 }
 
+/**
+ * 打开正文预览。WYSIWYG 面板只能表示 block 结构，
+ * 代码块参数（title / 行标记 / 行号 / 折叠）与代码组在这里才完整可见。
+ */
+const openBodyPreview = () => {
+  const markdown = currentMarkdown.value || ''
+  if (!markdown.trim()) {
+    ElMessage.warning('正文还是空的，先写点内容吧。')
+    return
+  }
+
+  bodyPreviewHtml.value = sanitizePreviewHtml(renderMarkdownPreview(markdown))
+  bodyPreviewVisible.value = true
+}
+
 const formatDateTime = formatEditorDateTime
 
 const getImageUploadErrorDetail = (error) => {
@@ -5184,7 +4164,6 @@ const triggerEditorImageUpload = () => {
 
   hideTableActionPanel()
   hideImageToolbar()
-  sideTablePickerVisible.value = false
   rememberEditorSelectionRange()
   imageInsertInput.value?.click()
 }
@@ -5340,7 +4319,6 @@ const showImageToolbar = (imageElement) => {
     Math.max(12, window.innerWidth - 236)
   )
   imageToolbarVisible.value = true
-  hideToolbar()
   hideTableActionPanel()
   hideTableHoverControl()
 }
@@ -5440,7 +4418,8 @@ const deleteActiveImage = async () => {
 
 // 定时自动保存，间隔由偏好设置控制。
 const autoSave = async () => {
-  if (!editorInstance || !editorSettings.value.autoSaveEnabled) return
+  if (!editorSettings.value.autoSaveEnabled) return
+  if (!editorInstance) return
 
   const currentContent = getCurrentMarkdownWithTableLayouts()
 
@@ -5487,11 +4466,7 @@ const stopAutoSave = () => {
 
 const handleEditorSettingsChange = (event) => {
   editorSettings.value = event.detail || getEditorSettings()
-  if (isFixedToolbarMode.value) {
-    hideToolbar()
-    sideTablePickerVisible.value = false
-    nextTick(updateFixedToolbarSnapshot)
-  }
+  nextTick(updateFixedToolbarSnapshot)
   startAutoSave()
 }
 
@@ -5644,7 +4619,7 @@ const handleDocumentSelection = () => {
     rememberEditorSelectionRange()
     updateFixedToolbarSnapshot()
     syncTableMultiCellSelectionState()
-    scheduleToolbarSync()
+    scheduleToolbarStateSync()
 
     window.requestAnimationFrame(() => {
       syncTableMultiCellSelectionState()
@@ -5685,19 +4660,18 @@ onMounted(async () => {
   window.addEventListener(EDITOR_SETTINGS_CHANGE_EVENT, handleEditorSettingsChange)
 
   document.addEventListener('selectionchange', handleDocumentSelection)
-  window.addEventListener('resize', hideToolbar)
   window.addEventListener('resize', hideTableActionPanel)
   window.addEventListener('resize', hideTableHoverControl)
   window.addEventListener('resize', hideTableResizeHandle)
   window.addEventListener('resize', hideImageToolbar)
   window.addEventListener('resize', refreshTableSelectionOverlay)
-  window.addEventListener('scroll', scheduleToolbarSync, true)
+  window.addEventListener('scroll', scheduleToolbarStateSync, true)
   window.addEventListener('scroll', hideTableActionPanel, true)
   window.addEventListener('scroll', hideTableHoverControl, true)
   window.addEventListener('scroll', hideTableResizeHandle, true)
   window.addEventListener('scroll', hideImageToolbar, true)
   window.addEventListener('scroll', refreshTableSelectionOverlay, true)
-  document.addEventListener('scroll', scheduleToolbarSync, true)
+  document.addEventListener('scroll', scheduleToolbarStateSync, true)
   document.addEventListener('scroll', hideTableHoverControl, true)
   document.addEventListener('scroll', hideTableResizeHandle, true)
   document.addEventListener('scroll', hideImageToolbar, true)
@@ -5713,30 +4687,28 @@ onBeforeUnmount(() => {
   window.removeEventListener(EDITOR_SETTINGS_CHANGE_EVENT, handleEditorSettingsChange)
 
   document.removeEventListener('selectionchange', handleDocumentSelection)
-  window.removeEventListener('resize', hideToolbar)
   window.removeEventListener('resize', hideTableActionPanel)
   window.removeEventListener('resize', hideTableHoverControl)
   window.removeEventListener('resize', hideTableResizeHandle)
   window.removeEventListener('resize', hideImageToolbar)
   window.removeEventListener('resize', refreshTableSelectionOverlay)
-  window.removeEventListener('scroll', scheduleToolbarSync, true)
+  window.removeEventListener('scroll', scheduleToolbarStateSync, true)
   window.removeEventListener('scroll', hideTableActionPanel, true)
   window.removeEventListener('scroll', hideTableHoverControl, true)
   window.removeEventListener('scroll', hideTableResizeHandle, true)
   window.removeEventListener('scroll', hideImageToolbar, true)
   window.removeEventListener('scroll', refreshTableSelectionOverlay, true)
-  document.removeEventListener('scroll', scheduleToolbarSync, true)
+  document.removeEventListener('scroll', scheduleToolbarStateSync, true)
   document.removeEventListener('scroll', hideTableHoverControl, true)
   document.removeEventListener('scroll', hideTableResizeHandle, true)
   document.removeEventListener('scroll', hideImageToolbar, true)
   document.removeEventListener('scroll', refreshTableSelectionOverlay, true)
-  cancelToolbarSync()
+  cancelToolbarStateSync()
   cleanupEditorSelectionListeners?.()
   cleanupEditorSelectionListeners = null
   cleanupEditorHoverListeners?.()
   cleanupEditorHoverListeners = null
   cancelToastContextMenuSync()
-  hideHoverBlockHint()
   hideTableHoverControl()
   hideTableActionPanel()
   stopTableResizeDrag()
@@ -5748,7 +4720,6 @@ onBeforeUnmount(() => {
   nativeTableCellSelectionStyleElement?.remove()
   nativeTableCellSelectionStyleElement = null
   hideFloatingPreview()
-  finishInlineCodeLanguageEdit(false)
   editorInstance?.destroy()
   editorInstance = null
 })
@@ -5764,6 +4735,7 @@ onBeforeUnmount(() => {
           :auto-save-status-text="autoSaveStatusText"
           @back="goToDetail"
           @save="saveNote"
+          @preview="openBodyPreview"
         />
 
         <section class="editor-layout fade-rise-enter-delay">
@@ -5780,35 +4752,39 @@ onBeforeUnmount(() => {
               @cancel-tag-input="cancelTagInput"
             >
               <template #editor>
-                <FixedEditorToolbar
-                  v-if="isFixedToolbarMode"
-                  :editor-ready="editorReady"
-                  :toolbar-state="fixedToolbarState"
-                  :selected-text="fixedToolbarSelectedText"
-                  :heading-options="headingOptions"
-                  :max-table-rows="MAX_TABLE_ROW_COUNT"
-                  :max-table-columns="MAX_TABLE_COLUMN_COUNT"
-                  @remember-selection="rememberFixedToolbarSelection"
-                  @command="runFixedToolbarCommand"
-                  @apply-heading="applyFixedToolbarHeading"
-                  @insert-link="insertFixedToolbarLink"
-                  @insert-image="triggerEditorImageUpload"
-                  @insert-table="applyTable"
-                  @insert-math="insertFixedToolbarMath"
-                  @insert-callout="insertFixedToolbarCallout"
-                />
                 <!--
                   注意：auto-height 是 Toast UI 在 setHeight('auto') 时动态加到根节点上的类，
                   一旦 Vue 因为 is-editor-empty 之类的动态 class 变化重写 className 就会把它抹掉，
                   导致 .toastui-editor-main 被压成 2px、整块编辑区不可见（空笔记输入第一个字即触发）。
                   因此这里把它写进静态 class，让 Vue 每次 patch 都保留它。
                 -->
-                <div
-                  ref="editorRoot"
-                  class="wysiwyg-editor blog-prose auto-height"
-                  :class="{ 'is-editor-empty': !currentMarkdown.trim() }"
-                  :data-placeholder="editorPlaceholder"
-                ></div>
+                <div class="wysiwyg-shell">
+                  <FixedEditorToolbar
+                    :editor-ready="editorReady"
+                    :toolbar-state="fixedToolbarState"
+                    :selected-text="fixedToolbarSelectedText"
+                    :heading-options="headingOptions"
+                    :max-table-rows="MAX_TABLE_ROW_COUNT"
+                    :max-table-columns="MAX_TABLE_COLUMN_COUNT"
+                    :active-callout="activeCalloutType"
+                    @remember-selection="rememberFixedToolbarSelection"
+                    @command="runFixedToolbarCommand"
+                    @apply-heading="applyFixedToolbarHeading"
+                    @insert-link="insertFixedToolbarLink"
+                    @insert-image="triggerEditorImageUpload"
+                    @insert-table="applyTable"
+                    @insert-math="insertFixedToolbarMath"
+                    @insert-callout="applyFixedToolbarCallout"
+                    @open-code-block-options="openFixedToolbarCodeBlockOptions"
+                    @apply-code-block-auto-format="applyCodeBlockAutoFormat"
+                  />
+                  <div
+                    ref="editorRoot"
+                    class="wysiwyg-editor blog-prose auto-height"
+                    :class="{ 'is-editor-empty': !currentMarkdown.trim() }"
+                    :data-placeholder="editorPlaceholder"
+                  ></div>
+                </div>
                 <input
                   ref="imageInsertInput"
                   class="image-replace-input"
@@ -5838,25 +4814,7 @@ onBeforeUnmount(() => {
             <button type="button" class="danger" @click="deleteActiveImage">删除</button>
           </div>
 
-          <FloatingFormatToolbar
-            v-if="!isFixedToolbarMode"
-            ref="floatingToolbar"
-            :visible="toolbarVisible"
-            :position="toolbarPosition"
-            :toolbar-state="toolbarState"
-            :selection-in-table="toolbarSelectionInTable"
-            :heading-options="headingOptions"
-            @command="runEditorCommand"
-            @apply-heading="applyHeading"
-            @apply-block-quote="applyBlockQuote"
-            @apply-code-block="applyCodeBlock"
-            @apply-code-block-auto-format="applyCodeBlockAutoFormat"
-            @apply-horizontal-rule="applyHorizontalRule"
-          />
-
           <EditorTableOverlays
-            :hover-block-hint-visible="hoverBlockHintVisible"
-            :hover-block-hint="hoverBlockHint"
             :table-hover-control-visible="tableHoverControlVisible"
             :table-hover-control-position="tableHoverControlPosition"
             :table-selection-overlay="tableSelectionOverlay"
@@ -5876,16 +4834,6 @@ onBeforeUnmount(() => {
           @close="closeVersionDrawer"
           @preview="previewVersion"
           @toggle="toggleVersionDrawer"
-        />
-
-        <SideTableToolbar
-          v-if="!isFixedToolbarMode"
-          v-model:visible="sideTablePickerVisible"
-          :editor-ready="editorReady"
-          @remember-selection="rememberEditorSelectionRange"
-          @insert-image="triggerEditorImageUpload"
-          @toggle="toggleSideTablePicker"
-          @select="applySelectedTable"
         />
 
         <TableActionPanel
@@ -5926,13 +4874,24 @@ onBeforeUnmount(() => {
       @close="closeVersionPreview"
       @restore="restoreVersion"
     />
+
+    <BodyPreviewDialog v-model:visible="bodyPreviewVisible" :html="bodyPreviewHtml" :title="form.title" />
+
+    <CodeBlockOptionsDialog
+      v-model:visible="codeOptionsVisible"
+      :info="codeOptionsInfo"
+      :code="codeOptionsCode"
+      @apply="applyCodeBlockOptions"
+    />
   </main>
 </template>
 
 <style scoped>
 .edit-page {
   padding: 20px;
-  overflow-x: hidden;
+  /* 用 clip 而不是 hidden：hidden 会把 overflow-y 变成 auto，让这一层变成滚动容器，
+     顶部固定工具栏的 position: sticky 就会失效（跟着内容一起滚走）。 */
+  overflow-x: clip;
 }
 
 .edit-stage {
@@ -6148,60 +5107,136 @@ onBeforeUnmount(() => {
   display: none !important;
 }
 
-.wysiwyg-editor :deep(.inline-code-language-chip),
-.wysiwyg-editor :deep(.inline-code-language-input) {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  box-sizing: border-box;
-  min-width: 74px;
-  max-width: min(132px, calc(100% - 28px));
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--table-border);
-  border-radius: 999px;
-  background: var(--overlay-background);
-  box-shadow: var(--shadow-subtle);
-  color: var(--brand-navy);
-  font-size: 0.78rem;
+/* 富文本内的提示框即时预览：隐藏标记行，加配色与标题 */
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout.is-callout-preview) {
+  --callout-accent: var(--brand-blue);
+  --callout-bg: var(--accent-soft);
+  padding: 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--callout-accent) 28%, transparent);
+  border-radius: 0.75rem;
+  background: var(--callout-bg);
+  font-style: normal;
+}
+
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout-warning.is-callout-preview) {
+  --callout-accent: var(--brand-gold);
+  --callout-bg: var(--search-highlight-bg);
+}
+
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout-tip.is-callout-preview) {
+  --callout-accent: var(--moss);
+  --callout-bg: var(--moss-soft);
+}
+
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout-important.is-callout-preview) {
+  --callout-accent: var(--brand-gold);
+  --callout-bg: var(--search-highlight-bg);
+}
+
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout-danger.is-callout-preview) {
+  --callout-accent: var(--danger);
+  --callout-bg: var(--danger-soft);
+}
+
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout.is-callout-preview::before) {
+  display: none;
+}
+
+/* toast-ui 给 blockquote 内的 p 设了浅灰，即时预览要取回正文颜色 */
+.wysiwyg-editor :deep(.toastui-editor-contents blockquote.moonbird-callout.is-callout-preview :is(p, ul, ol, li, span, strong, em, a)) {
+  color: inherit;
+}
+
+.wysiwyg-editor :deep(.mb-source-hidden) {
+  display: none;
+}
+
+.wysiwyg-editor :deep(.mb-callout-preview-title) {
+  display: block;
+  margin-bottom: 0.5em;
+  color: var(--callout-accent);
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 30px;
-  text-align: center;
   letter-spacing: 0.01em;
+  user-select: none;
 }
 
-.wysiwyg-editor :deep(.inline-code-language-chip) {
-  display: inline-flex;
+/* 富文本内的代码块参数信息条 */
+.wysiwyg-editor :deep(.mb-code-preview-head) {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--ink-soft);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.wysiwyg-editor :deep(.mb-code-preview-lang) {
+  padding: 0.05rem 0.5rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--brand-blue);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.wysiwyg-editor :deep(.mb-code-preview-lang:hover) {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.wysiwyg-editor :deep(.mb-code-preview-title) {
   overflow: hidden;
+  color: var(--brand-navy);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wysiwyg-editor :deep(.mb-code-preview-badges) {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.wysiwyg-editor :deep(.mb-code-preview-options) {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
   border: 1px solid var(--border-soft);
-  cursor: text;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
-}
-
-.wysiwyg-editor :deep(.inline-code-language-chip:hover) {
-  border-color: var(--accent-border);
-  background: var(--control-hover-background);
-  box-shadow:
-    0 12px 24px rgba(15, 23, 42, 0.08),
-    0 0 0 3px rgba(37, 99, 235, 0.08);
-}
-
-.wysiwyg-editor :deep(.inline-code-language-input) {
-  outline: none;
-  cursor: text;
-}
-
-.wysiwyg-editor :deep(.inline-code-language-input:focus) {
-  border-color: var(--accent-border);
+  border-radius: 999px;
   background: var(--control-background);
-  box-shadow:
-    0 12px 24px rgba(15, 23, 42, 0.08),
-    0 0 0 3px rgba(37, 99, 235, 0.12);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wysiwyg-editor :deep(.mb-code-preview-options:hover) {
+  border-color: var(--accent-border);
+  color: var(--brand-blue);
+}
+
+/* `::: code-group` / `:::` 容器行：弱化成“语法行”，不与正文争夺视觉权重 */
+.wysiwyg-editor :deep(.toastui-editor-contents p.mb-directive-preview) {
+  padding: 2px 8px;
+  border-left: 2px solid var(--border-soft);
+  border-radius: 4px;
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.8rem;
 }
 
 @media (max-width: 1380px) {
@@ -6224,12 +5259,6 @@ onBeforeUnmount(() => {
 @media (max-width: 720px) {
   .editor-main {
     padding: 0;
-  }
-
-  .wysiwyg-editor :deep(.inline-code-language-chip),
-  .wysiwyg-editor :deep(.inline-code-language-input) {
-    right: 12px;
-    min-width: 68px;
   }
 }
 

@@ -1,0 +1,71 @@
+name: Bug report
+description: 报告一个可复现的问题
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提 issue 前请先确认：
+        - 已经在最新代码上复现过（`git pull` 后重试）。
+        - 没有在 issue 里贴出密钥、笔记正文或服务器地址。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 实际现象，以及你期望的行为。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从打开哪个页面开始，一步一步写。
+      placeholder: |
+        1. 打开笔记编辑页
+        2. 在表格里拖拽列宽
+        3. 刷新后宽度回到默认
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响范围
+      multiple: true
+      options:
+        - 笔记 / 日记
+        - 编辑器
+        - 图片 / 上传
+        - 搜索
+        - Knowledge Agent / RAG
+        - 登录 / 权限
+        - 部署 / 配置
+        - 其他
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交号
+      description: 页面底部或 `git log -1 --format=%h` 的结果。
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 操作系统、浏览器、是本地开发还是 Docker 部署。
+      placeholder: Windows 11 / Chrome 1xx / Docker Compose
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志
+      description: 后端报错栈或浏览器控制台输出。请先抹掉密钥、域名和笔记内容。
+      render: shell
+    validations:
+      required: false

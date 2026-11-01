@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞
+    url: https://github.com/moon-bird541/MoonBirdNotes/security/advisories/new
+    about: 请通过私密 Security Advisory 报告，不要开公开 issue。
+  - name: 开发约定
+    url: https://github.com/moon-bird541/MoonBirdNotes/blob/main/CONTRIBUTING.md
+    about: 提交代码前请先读环境准备与提交前检查。

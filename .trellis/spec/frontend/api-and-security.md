@@ -32,10 +32,11 @@ Do not create a page-local Axios client, store JWTs, add bearer headers from loc
 
 ## Safe HTML
 
-There are two established trust paths:
+There are three established trust paths:
 
 1. Note/version/upload `rendered_html` is generated and Bleach-sanitized by the backend before storage/response. Existing `v-html` uses in `NoteUploadView.vue` and `VersionPreviewDialog.vue` rely on that backend contract.
 2. Client-generated or Agent Markdown is untrusted and must be sanitized in the owning helper/component. `renderAgentAnswer.js` runs `marked` then DOMPurify; `FloatingPreview.vue` sanitizes `bodyHtml` before `v-html`.
+3. The editor body/source preview (`markdownPreview.js` → `previewSanitizer.js`) renders unsanitized Markdown to HTML; callers must sanitize before `v-html`. `NoteEditView.vue` and `MarkdownSourceEditor.vue` both go through `sanitizePreviewHtml`.
 
 Rules:
 
@@ -44,6 +45,8 @@ Rules:
 - Do not weaken DOMPurify forbidden tags/attributes or post-process sanitized HTML with unsanitized user data.
 - The code-block toolbar in `renderAgentAnswer.js` is added only after sanitization and copies from `code.textContent`.
 - If backend `rendered_html` provenance changes, add frontend sanitization rather than assuming the old contract.
+- Extension Markdown helpers (`fenceInfo.js#escapeHtml`, callout labels, code-group labels, fence `title`) always escape interpolated text. Never interpolate raw user text into a generated code block/callout string.
+- The reader-side `customHTMLRenderer` output is re-sanitized by the Viewer's own DOMPurify; do not assume generated attributes survive, and do not add `data-*` attributes there. Interactive controls belong in `codeBlockTools.js`, which runs after sanitization.
 
 ## Navigation and Private Data
 

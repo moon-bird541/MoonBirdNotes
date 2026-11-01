@@ -1,6 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { RefreshRight } from '@element-plus/icons-vue'
+
+import { enhanceRichContent } from '../../utils/richContent'
 
 const props = defineProps({
   visible: {
@@ -19,10 +21,25 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'close', 'restore'])
 
+const previewContent = ref(null)
+
 const dialogVisible = computed({
   get: () => props.visible,
   set: (value) => emit('update:visible', value),
 })
+
+// 历史版本的 rendered_html 同样由后端生成并净化；这里补客户端增强，
+// 保证提示框、代码块折叠、Tab 代码组、公式在版本预览里与详情页一致。
+watch(
+  () => [props.visible, props.version?.rendered_html],
+  async () => {
+    if (!props.visible) {
+      return
+    }
+    await nextTick()
+    enhanceRichContent(previewContent.value)
+  }
+)
 </script>
 
 <template>
@@ -43,7 +60,11 @@ const dialogVisible = computed({
           备注：{{ version.note_text }}
         </p>
       </div>
-      <div class="version-preview-content markdown-body blog-prose" v-html="version.rendered_html"></div>
+      <div
+        ref="previewContent"
+        class="version-preview-content markdown-body blog-prose"
+        v-html="version.rendered_html"
+      ></div>
     </template>
 
     <template #footer>

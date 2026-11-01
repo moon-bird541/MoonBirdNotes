@@ -34,7 +34,9 @@ MoonBirdNotes 是一个面向个人使用的在线 Markdown 知识库系统。
 - 支持为笔记设置 0 到 5 星重要程度，支持半星
 - 全局搜索支持在任意工作台页面检索标题、正文、标签或文件名
 - 笔记详情页展示完整内容
-- 单篇笔记支持导出为 Markdown 或 HTML 文件
+- 阅读端与编辑器支持 Firefly 风格扩展 Markdown 语法（提醒框全类型、代码块标题/行号/行标记/折叠、Tab 代码组）
+- 编辑器实时预览扩展语法：正文上方常驻固定工具栏（滚动吸顶），提示框支持切换类型 / 再次点击取消，代码块可打开参数面板
+- 单篇笔记支持导出为 Markdown 或 HTML 文件（HTML 内联扩展语法样式与交互）
 - 笔记列表支持批量选择、批量修改标签、批量导出和移入回收站
 - 在线编辑笔记标题、正文和标签
 - 编辑器支持图片上传和粘贴，并生成 Markdown 图片引用
@@ -150,11 +152,38 @@ python manage.py rebuild_rag_index --recreate-collection
 MoonBirdNotes/
 ├─ backend/     Django 后端
 ├─ frontend/    Vue 前端
-├─ compose.yaml Qdrant 独立服务
+├─ compose.yaml MySQL / Redis / Qdrant / 前后端服务
+├─ .github/     CI（后端测试 + 前端单测与构建）
 ├─ Function.md  功能说明
-├─ TODO.md      开发进度记录
+├─ PRODUCT_RULES.md  产品边界规则（优先于代码实现）
 └─ README.md    项目说明
 ```
+
+## 本地开发与验证
+
+后端（先准备好 `backend/.env`，可从 `backend/.env.example` 复制）：
+
+```bash
+cd backend
+python manage.py migrate
+python manage.py test          # 408 项测试
+python manage.py runserver
+```
+
+前端：
+
+```bash
+cd frontend/moonsbirdnotrs_vue
+npm install
+npm run dev                    # 开发服务器
+npm run test:unit              # 单元测试（Vitest + jsdom）
+npm run test:e2e               # 端到端测试（Playwright，需后端与浏览器）
+npm run build                  # 生产构建
+```
+
+`npm run test:unit` 覆盖的是可离线断言的纯逻辑：代码块 info-string 解析与 HTML 生成、
+表格布局元数据与拖拽换算、表格多选区域、Markdown 预览的 XSS 净化。需要真实编辑器
+或真实接口的场景仍然走 `e2e/`。
 
 ## 当前待继续完善的方向
 
@@ -163,3 +192,5 @@ MoonBirdNotes/
 - 首页接入真实笔记数据
 - 智能问答功能
 - 多用户能力预留
+- 继续拆分 `NoteEditView.vue`（当前约 6100 行，表格相关逻辑已抽到 `src/utils/table*.js`）
+

@@ -43,6 +43,7 @@ from .serializers import (
     normalize_tag_names,
     render_markdown_content,
 )
+from .export_assets import EXPORT_SCRIPT, EXPORT_STYLES
 from .services.trash import delete_note_files
 
 
@@ -702,6 +703,7 @@ def build_export_html(note):
       border: 1px solid #cbd5e1;
       vertical-align: top;
     }}
+{EXPORT_STYLES}
   </style>
 </head>
 <body>
@@ -714,6 +716,9 @@ def build_export_html(note):
 {note.rendered_html}
     </article>
   </main>
+  <script>
+{EXPORT_SCRIPT}
+  </script>
 </body>
 </html>
 """

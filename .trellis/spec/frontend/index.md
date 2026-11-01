@@ -12,7 +12,7 @@ MoonBirdNotes is a Vue 3 single-page application built with Vite. It uses JavaSc
 | [Runtime Contracts](./type-safety.md) | JavaScript runtime validation and API-shape discipline |
 | [API and Security](./api-and-security.md) | Axios session handling, CSRF, error mapping, safe HTML |
 | [Design System](./design-system.md) | MoonBird visual language, tokens, motion, responsive behavior |
-| [Editor Toolbar](./editor-toolbar.md) | Toolbar modes, command/event contracts, selection restoration, and sticky layout |
+| [Editor Toolbar](./editor-toolbar.md) | Toolbar modes, command/event contracts, selection restoration, sticky layout, and extension-Markdown authoring |
 | [Quality Guidelines](./quality-guidelines.md) | Build, Playwright, review, and verification expectations |
 
 The original hook template was removed because this is Vue, not React, and the repository currently has no composables layer. Shared stateful behavior is documented in State Management and Component Guidelines.
@@ -23,7 +23,7 @@ The original hook template was removed because this is Vue, not React, and the r
 2. Read [API and Security](./api-and-security.md) before changing authentication, service calls, errors, uploads, Markdown, or any `v-html` path.
 3. Read [State Management](./state-management.md) before adding persistent settings, cross-view coordination, route state, timers, or event listeners.
 4. Read [Design System](./design-system.md) for visible UI work, then inspect the nearest existing view/component rather than introducing a new visual vocabulary.
-5. Read [Editor Toolbar](./editor-toolbar.md) before changing editor commands, toolbar modes, or selection restoration.
+5. Read [Editor Toolbar](./editor-toolbar.md) before changing editor commands, toolbar modes, selection restoration, or extension-Markdown authoring.
 6. Run the production build. Add/run Playwright coverage when changing a routed user flow or API contract.
 
 ## Project Commands

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   Checked,
   Document,
@@ -9,6 +9,7 @@ import {
   Minus,
   Operation,
   Picture,
+  Setting,
   Tickets,
 } from '@element-plus/icons-vue'
 
@@ -37,6 +38,11 @@ const props = defineProps({
     type: Number,
     default: 10,
   },
+  /** 选区当前所在提示框的类型（小写 canonical），不在提示框内为空串 */
+  activeCallout: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits([
@@ -47,6 +53,8 @@ const emit = defineEmits([
   'insert-table',
   'insert-math',
   'insert-callout',
+  'open-code-block-options',
+  'apply-code-block-auto-format',
   'remember-selection',
 ])
 
@@ -65,18 +73,18 @@ const tablePreview = reactive({
 })
 
 const inlineButtons = [
-  { command: 'bold', stateKey: 'strong', label: '加粗', text: 'B', textClass: 'is-bold' },
-  { command: 'italic', stateKey: 'italic', label: '斜体', text: 'I', textClass: 'is-italic' },
-  { command: 'strike', stateKey: 'strike', label: '删除线', text: 'S', textClass: 'is-strike' },
-  { command: 'code', stateKey: 'code', label: '行内代码', text: '</>', textClass: 'is-code' },
+  { command: 'bold', action: 'bold', stateKey: 'strong', label: '加粗', text: 'B', textClass: 'is-bold' },
+  { command: 'italic', action: 'italic', stateKey: 'italic', label: '斜体', text: 'I', textClass: 'is-italic' },
+  { command: 'strike', action: 'strike', stateKey: 'strike', label: '删除线', text: 'S', textClass: 'is-strike' },
+  { command: 'code', action: 'inline-code', stateKey: 'code', label: '行内代码', text: '</>', textClass: 'is-code' },
 ]
 
 const blockButtons = [
-  { command: 'blockQuote', stateKey: 'blockQuote', label: '引用', icon: Tickets },
-  { command: 'bulletList', stateKey: 'bulletList', label: '无序列表', icon: List },
-  { command: 'orderedList', stateKey: 'orderedList', label: '有序列表', icon: Operation },
-  { command: 'taskList', stateKey: 'taskList', label: '任务列表', icon: Checked },
-  { command: 'codeBlock', stateKey: 'codeBlock', label: '代码块', icon: Document },
+  { command: 'blockQuote', action: 'block-quote', stateKey: 'blockQuote', label: '引用', icon: Tickets },
+  { command: 'bulletList', action: 'bullet-list', stateKey: 'bulletList', label: '无序列表', icon: List },
+  { command: 'orderedList', action: 'ordered-list', stateKey: 'orderedList', label: '有序列表', icon: Operation },
+  { command: 'taskList', action: 'task-list', stateKey: 'taskList', label: '任务列表', icon: Checked },
+  { command: 'codeBlock', action: 'code-block', stateKey: 'codeBlock', label: '代码块', icon: Document },
 ]
 
 // 提示框类型，与阅读端 utils/richContent.js 的解析保持一致
@@ -204,6 +212,40 @@ const insertCallout = (kind) => {
   calloutPopoverVisible.value = false
 }
 
+/*
+ * 吸顶状态
+ * ---------------------------------------------------------------------------
+ * 工具栏在正文顶部时和正文是一体的（无边框、无阴影）；一旦被滚动「顶住」，
+ * 就切换成浮起的小卡片，避免长笔记下滑时一排按钮悬在半空显得很脏。
+ *
+ * 用哨兵元素 + IntersectionObserver 判断，比监听 scroll 更稳（不需要节流，
+ * 也不会在嵌套滚动容器里算错位置）。
+ */
+const isPinned = ref(false)
+const pinSentinel = ref(null)
+let pinObserver = null
+
+const observePinnedState = () => {
+  if (typeof IntersectionObserver !== 'function' || !pinSentinel.value) {
+    return
+  }
+
+  pinObserver?.disconnect()
+  pinObserver = new IntersectionObserver(
+    ([entry]) => {
+      isPinned.value = !entry.isIntersecting
+    },
+    { threshold: 0, rootMargin: '-16px 0px 0px 0px' }
+  )
+  pinObserver.observe(pinSentinel.value)
+}
+
+onMounted(observePinnedState)
+onBeforeUnmount(() => {
+  pinObserver?.disconnect()
+  pinObserver = null
+})
+
 watch(
   () => props.editorReady,
   (ready) => {
@@ -212,12 +254,20 @@ watch(
       tablePopoverVisible.value = false
       calloutPopoverVisible.value = false
     }
+
+    nextTick(observePinnedState)
   }
 )
 </script>
 
 <template>
-  <nav class="fixed-editor-toolbar" aria-label="固定正文工具栏">
+  <div ref="pinSentinel" class="fixed-toolbar-sentinel" aria-hidden="true"></div>
+
+  <nav
+    class="fixed-editor-toolbar"
+    :class="{ 'is-pinned': isPinned }"
+    aria-label="固定正文工具栏"
+  >
     <div class="fixed-editor-toolbar-track">
       <div class="fixed-toolbar-group" aria-label="标题">
         <button
@@ -245,6 +295,7 @@ watch(
           :key="button.command"
           type="button"
           class="fixed-toolbar-button"
+          :data-action="button.action"
           :class="{ 'is-active': isActive(button.stateKey) }"
           :disabled="!editorReady"
           :aria-label="button.label"
@@ -266,6 +317,7 @@ watch(
           :key="button.command"
           type="button"
           class="fixed-toolbar-button"
+          :data-action="button.action"
           :class="{ 'is-active': isActive(button.stateKey) }"
           :disabled="!editorReady"
           :aria-label="button.label"
@@ -309,7 +361,7 @@ watch(
           :visible="calloutPopoverVisible"
           trigger="manual"
           placement="bottom-end"
-          :width="180"
+          :width="190"
           popper-class="fixed-callout-popover"
           @update:visible="calloutPopoverVisible = $event"
         >
@@ -317,10 +369,11 @@ watch(
             <button
               type="button"
               class="fixed-toolbar-button"
-              :class="{ 'is-active': calloutPopoverVisible }"
+              :class="{ 'is-active': Boolean(activeCallout) || calloutPopoverVisible }"
               :disabled="!editorReady"
-              aria-label="插入提示框"
-              title="插入提示框"
+              :aria-label="activeCallout ? '修改或取消提示框' : '插入提示框'"
+              :title="activeCallout ? '再次点击当前类型可取消' : '插入提示框'"
+              data-action="callout"
               @mousedown.prevent="rememberSelection"
               @click.stop="openCalloutPopover"
             >
@@ -329,19 +382,37 @@ watch(
           </template>
 
           <div class="fixed-callout-picker" @mousedown.prevent>
+            <p class="fixed-popover-title">提示框</p>
             <button
               v-for="item in calloutKinds"
               :key="item.kind"
               type="button"
               class="fixed-callout-option"
-              :class="`is-${item.kind}`"
+              :class="[`is-${item.kind}`, { 'is-current': activeCallout === item.kind }]"
               @click="insertCallout(item.kind)"
             >
               <span class="fixed-callout-dot" aria-hidden="true"></span>
               {{ item.label }}
+              <span v-if="activeCallout === item.kind" class="fixed-callout-hint">取消</span>
             </button>
           </div>
         </el-popover>
+
+        <el-tooltip content="代码块设置：标题 / 行号 / 标记 / 折叠" placement="bottom" :show-after="120">
+          <button
+            type="button"
+            class="fixed-toolbar-button"
+            :class="{ 'is-active': Boolean(toolbarState.codeBlock?.active) }"
+            :disabled="!editorReady"
+            aria-label="代码块设置"
+            title="代码块设置"
+            data-action="code-block-options"
+            @mousedown.prevent="rememberSelection"
+            @click="emit('open-code-block-options')"
+          >
+            <el-icon><Setting /></el-icon>
+          </button>
+        </el-tooltip>
       </div>
 
       <span class="fixed-toolbar-divider" aria-hidden="true"></span>
@@ -469,44 +540,71 @@ watch(
 </template>
 
 <style scoped>
+/* 顶部占位：IntersectionObserver 用它判断工具栏是否已经吸顶 */
+.fixed-toolbar-sentinel {
+  height: 1px;
+  margin-bottom: -1px;
+  pointer-events: none;
+}
+
 .fixed-editor-toolbar {
   position: sticky;
   z-index: 90;
-  top: 12px;
+  top: 0;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  border-block: 1px solid var(--border-soft);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  box-shadow: 0 10px 26px rgba(78, 54, 38, 0.08);
-  backdrop-filter: blur(18px);
+  padding: 0 14px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+/*
+ * 吸顶后贴住视口顶部，变成正文卡片的一条「页眉」：
+ * 接近不透明的纸色 + 细分割线，正文从下面滑过而不会从缝隙里透出来。
+ */
+.fixed-editor-toolbar.is-pinned {
+  border-bottom-color: var(--border-soft);
+  background-color: var(--overlay-background);
+  box-shadow: 0 8px 18px -12px rgba(70, 48, 32, 0.5);
+  backdrop-filter: blur(18px) saturate(1.05);
 }
 
 .fixed-editor-toolbar-track {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
-  padding: 8px 12px;
+  padding: 7px 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-color: var(--border-strong) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.fixed-editor-toolbar-track::-webkit-scrollbar {
+  height: 0;
 }
 
 .fixed-toolbar-group {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .fixed-toolbar-divider {
   flex: 0 0 auto;
   width: 1px;
-  height: 26px;
-  margin: 0 2px;
-  background: var(--border-soft);
+  height: 18px;
+  margin: 0 7px;
+  background: color-mix(in srgb, var(--border-soft) 70%, transparent);
 }
 
 .fixed-toolbar-button {
@@ -514,92 +612,93 @@ watch(
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: 9px;
+  border: none;
+  border-radius: 8px;
   background: transparent;
-  color: var(--text-primary);
+  color: color-mix(in srgb, var(--text-primary) 82%, transparent);
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .fixed-toolbar-button svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .fixed-toolbar-button:hover:not(:disabled),
 .fixed-toolbar-button:focus-visible {
-  border-color: var(--accent-border);
   outline: none;
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
   color: var(--accent);
-}
-
-.fixed-toolbar-button:hover:not(:disabled) {
-  transform: translateY(-1px);
 }
 
 .fixed-toolbar-button.is-active {
-  border-color: var(--accent-border);
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
   color: var(--accent);
-  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--accent) 68%, transparent);
 }
 
 .fixed-toolbar-button:disabled {
   cursor: not-allowed;
-  opacity: 0.42;
+  opacity: 0.35;
 }
 
 .fixed-toolbar-heading {
-  width: 36px;
-  min-width: 36px;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 800;
+  width: 32px;
+  min-width: 32px;
+  color: color-mix(in srgb, var(--text-primary) 74%, transparent);
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.fixed-toolbar-heading.is-active {
+  color: var(--accent);
 }
 
 .is-bold {
+  font-size: 0.9rem;
   font-weight: 900;
 }
 
 .is-italic {
   font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.95rem;
   font-style: italic;
   font-weight: 700;
 }
 
 .is-strike {
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
   text-decoration: line-through;
 }
 
 .is-code {
   font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: -0.08em;
+  letter-spacing: -0.06em;
 }
 
 .is-math {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-style: italic;
   font-weight: 700;
 }
 
 .is-math-block {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-style: italic;
   font-weight: 700;
   text-decoration: underline;
@@ -607,13 +706,23 @@ watch(
 }
 
 .is-callout {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 800;
 }
 
 .fixed-callout-picker {
   display: grid;
-  gap: 2px;
+  gap: 1px;
+}
+
+.fixed-popover-title {
+  margin: 0 0 6px;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .fixed-callout-option {
@@ -621,13 +730,13 @@ watch(
   align-items: center;
   gap: 9px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: none;
   border-radius: 8px;
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -639,6 +748,18 @@ watch(
   outline: none;
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.fixed-callout-option.is-current {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.fixed-callout-hint {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .fixed-callout-dot {

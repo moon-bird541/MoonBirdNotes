@@ -11,8 +11,10 @@ import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
 import { EDITOR_SETTINGS_CHANGE_EVENT, getEditorSettings } from '../utils/editorSettings'
 import { exportNoteFile, getNoteExportErrorDetail } from '../utils/noteExport'
+import { expandDirectives } from '../utils/directives'
 import { enhanceRichContent } from '../utils/richContent'
 import { applyTableLayoutsToTables, extractTableLayoutMetadata } from '../utils/tableLayout'
+import { createViewerRendererRegistry } from '../utils/viewerRenderer'
 import '../styles/markdown.css'
 
 const route = useRoute()
@@ -26,6 +28,7 @@ const exportingFormat = ref('')
 
 let viewerInstance = null
 let viewerTableLayouts = []
+const viewerRenderer = createViewerRendererRegistry()
 
 const tagNames = computed(() => note.value?.tags?.map((tag) => tag.name) || [])
 const readerFontSizeStyle = computed(() => ({
@@ -104,6 +107,10 @@ const renderViewerContent = () => {
   const parsedMarkdown = extractTableLayoutMetadata(note.value?.markdown_content || '')
   viewerTableLayouts = parsedMarkdown.layouts
 
+  // `:::` 容器语法在 toast-ui 里没有对应语义，先展开成引用块 + 代码组占位注释
+  const expanded = expandDirectives(parsedMarkdown.markdown)
+  viewerRenderer.setGroups(expanded.groups)
+
   const applyViewerTableLayouts = () => {
     applyTableLayoutsToTables(
       articleViewer.value?.querySelectorAll('.toastui-editor-contents table') || [],
@@ -122,14 +129,15 @@ const renderViewerContent = () => {
   if (!viewerInstance) {
     viewerInstance = new Viewer({
       el: articleViewer.value,
-      initialValue: parsedMarkdown.markdown,
+      initialValue: expanded.markdown,
       usageStatistics: false,
+      customHTMLRenderer: viewerRenderer.options,
     })
     scheduleViewerTableLayouts()
     return
   }
 
-  viewerInstance.setMarkdown(parsedMarkdown.markdown)
+  viewerInstance.setMarkdown(expanded.markdown)
   scheduleViewerTableLayouts()
 }
 

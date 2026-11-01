@@ -346,6 +346,12 @@
 	display: none;
 }
 
+/* toast-ui 给 blockquote 内的 p / ul / ol 单独设了浅灰，会把正文洗淡；
+   提示框要显式取回正文颜色（标题元素自身单独覆盖，故排除） */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout :is(p, ul, ol, li, span, strong, em, a):not(.moonbird-callout-title) {
+	color: inherit;
+}
+
 :is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-callout-title {
 	margin: 0 0 0.5em;
 	color: var(--callout-accent);
@@ -373,10 +379,239 @@
 	--callout-bg: var(--search-highlight-bg);
 }
 
-:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-warning,
-:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-caution {
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-warning {
+	--callout-accent: var(--brand-gold);
+	--callout-bg: var(--search-highlight-bg);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-caution,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout-danger {
 	--callout-accent: var(--danger);
 	--callout-bg: var(--danger-soft);
+}
+
+/* 提示框内的段落继承整块底色，不再叠加引用块缩进 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) blockquote.moonbird-callout > p {
+	margin: 0.5em 0;
+}
+
+/* ── 代码块扩展语法（title / 行号 / 行标记 / 折叠 / 代码组）──────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code {
+	position: relative;
+	margin: 1.5em 0;
+	border: 1px solid var(--table-border);
+	border-radius: 0.75rem;
+	background: var(--code-background);
+	overflow: hidden;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-head {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.55rem 0.9rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: color-mix(in srgb, var(--code-text) 72%, transparent);
+	font-family: "Cascadia Code", "Consolas", monospace;
+	font-size: 0.78rem;
+	line-height: 1.4;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-dots {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 999px;
+	background: #f2777a;
+	box-shadow:
+		0.9rem 0 0 #f2c14e,
+		1.8rem 0 0 #7ec46f;
+	content: "";
+	flex: none;
+	margin-right: 1.8rem;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-lang,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-lang {
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	opacity: 0.72;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-title {
+	margin-left: auto;
+	color: color-mix(in srgb, var(--code-text) 88%, transparent);
+	font-weight: 600;
+}
+
+/* 代码块内的 pre 去掉自身外边距与边框，外观交给外层容器 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code > pre {
+	margin: 0;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	padding: 0.9rem 1rem;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code.is-no-wrap > pre {
+	white-space: pre;
+	overflow-wrap: normal;
+	word-break: normal;
+	overflow-x: auto;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-line {
+	display: block;
+	min-height: 1.2em;
+	padding: 0 0.25rem;
+	margin: 0 -0.25rem;
+	border-radius: 0.25rem;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code.is-no-wrap .moonbird-code-line {
+	white-space: pre;
+	overflow-wrap: normal;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-lineno {
+	display: inline-block;
+	width: 2.4em;
+	margin-right: 0.9em;
+	color: rgba(255, 255, 255, 0.34);
+	text-align: right;
+	user-select: none;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-line.is-mark {
+	background: rgba(179, 132, 50, 0.18);
+	box-shadow: inset 2px 0 0 var(--brand-gold);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-line.is-ins {
+	background: rgba(126, 196, 111, 0.16);
+	box-shadow: inset 2px 0 0 #7ec46f;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-line.is-del {
+	background: rgba(242, 119, 122, 0.16);
+	box-shadow: inset 2px 0 0 #f2777a;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-mark {
+	border-radius: 0.2rem;
+	background: rgba(179, 132, 50, 0.32);
+	padding: 0.05em 0.15em;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-note {
+	margin-left: 0.75em;
+	color: rgba(255, 255, 255, 0.52);
+	font-size: 0.82em;
+	font-style: italic;
+}
+
+/* 折叠：默认全部可见（无 JS 时不丢内容），由增强器加 has-collapse-ready 后才收起 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code.has-collapse-ready:not(.is-expanded) .moonbird-code-line.is-collapsed {
+	display: none;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-toggle {
+	position: relative;
+	display: block;
+	width: 100%;
+	padding: 0.5rem 1rem;
+	border: none;
+	border-top: 1px dashed rgba(255, 255, 255, 0.14);
+	background: rgba(255, 255, 255, 0.03);
+	color: color-mix(in srgb, var(--code-text) 72%, transparent);
+	font-size: 0.78rem;
+	text-align: center;
+	cursor: pointer;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-toggle:hover {
+	background: rgba(255, 255, 255, 0.07);
+	color: var(--code-text);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-toggle:focus-visible {
+	outline: 2px solid var(--brand-blue);
+	outline-offset: -2px;
+}
+
+/* ── Tab 代码组 ───────────────────────────────────────────────────────── */
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-group {
+	margin: 1.5em 0;
+	border: 1px solid var(--table-border);
+	border-radius: 0.75rem;
+	background: var(--code-background);
+	overflow: hidden;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding: 0.4rem 0.5rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.03);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-tab {
+	padding: 0.45rem 0.85rem;
+	border: none;
+	border-radius: 0.5rem 0.5rem 0 0;
+	background: transparent;
+	color: color-mix(in srgb, var(--code-text) 60%, transparent);
+	font-family: "Cascadia Code", "Consolas", monospace;
+	font-size: 0.8rem;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-tab:hover {
+	color: var(--code-text);
+	background: rgba(255, 255, 255, 0.06);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-tab.is-active {
+	background: rgba(255, 255, 255, 0.1);
+	color: var(--code-text);
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-tab:focus-visible {
+	outline: 2px solid var(--brand-blue);
+	outline-offset: -2px;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-panel {
+	display: none;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-panel.is-active {
+	display: block;
+}
+
+/* 组内代码块与默认形状合并，避免双层边框 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-panel > .moonbird-code,
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-panel > pre {
+	margin: 0;
+	border: none;
+	border-radius: 0;
+}
+
+:is(.blog-prose, .blog-prose .toastui-editor-contents) .moonbird-code-panel > .moonbird-code .moonbird-code-head {
+	border-top: none;
 }
 
 /* ── 数学公式（KaTeX）─────────────────────────────────────────────────── */

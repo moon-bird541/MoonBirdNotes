@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 
 import {
-  EDITOR_TOOLBAR_MODES,
   MAX_EDITOR_FONT_SIZE_PX,
   MAX_NOTE_LIST_PAGE_SIZE,
   MIN_EDITOR_FONT_SIZE_PX,
@@ -29,9 +28,6 @@ const effectiveTheme = ref(getEffectiveTheme())
 const editorSettings = ref(getEditorSettings())
 const compact = computed(() => props.collapsed && !props.mobile)
 const isDarkTheme = computed(() => effectiveTheme.value === THEMES.DARK)
-const toolbarModeStatusText = computed(() =>
-  editorSettings.value.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED ? '固定工具栏' : '选区工具栏'
-)
 const themeStatusText = computed(() => {
   if (currentTheme.value === THEMES.SYSTEM) {
     return `跟随系统：${isDarkTheme.value ? '黑夜模式' : '白天模式'}`
@@ -73,10 +69,6 @@ const setAutoSaveEnabled = (value) => {
   editorSettings.value = updateEditorSettings({
     autoSaveEnabled: value,
   })
-}
-
-const setToolbarMode = (toolbarMode) => {
-  editorSettings.value = updateEditorSettings({ toolbarMode })
 }
 
 const handleThemeChange = (event) => {
@@ -184,34 +176,7 @@ onBeforeUnmount(() => {
       <div class="settings-row">
         <div class="settings-row-copy">
           <strong>编辑器设置</strong>
-          <span>{{ toolbarModeStatusText }}</span>
-        </div>
-
-        <div class="setting-line setting-line-stack">
-          <div>
-            <strong>正文工具栏</strong>
-            <span>固定模式会在笔记和日记正文上方常驻显示</span>
-          </div>
-          <div class="toolbar-mode-segment" role="group" aria-label="正文工具栏模式">
-            <button
-              type="button"
-              class="toolbar-mode-option"
-              :class="{ 'is-active': editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.CURRENT }"
-              :aria-pressed="editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.CURRENT"
-              @click="setToolbarMode(EDITOR_TOOLBAR_MODES.CURRENT)"
-            >
-              当前模式
-            </button>
-            <button
-              type="button"
-              class="toolbar-mode-option"
-              :class="{ 'is-active': editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED }"
-              :aria-pressed="editorSettings.toolbarMode === EDITOR_TOOLBAR_MODES.FIXED"
-              @click="setToolbarMode(EDITOR_TOOLBAR_MODES.FIXED)"
-            >
-              固定工具栏
-            </button>
-          </div>
+          <span>正文工具栏常驻在编辑区顶部</span>
         </div>
 
         <div class="setting-line">
@@ -450,48 +415,6 @@ onBeforeUnmount(() => {
   --el-slider-main-bg-color: var(--accent);
   --el-slider-runway-bg-color: var(--border-soft);
   --el-slider-button-size: 16px;
-}
-
-.toolbar-mode-segment {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  background: var(--surface-soft);
-}
-
-.toolbar-mode-option {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.toolbar-mode-option:hover,
-.toolbar-mode-option:focus-visible {
-  border-color: var(--accent-border);
-  outline: none;
-  color: var(--accent);
-}
-
-.toolbar-mode-option.is-active {
-  border-color: var(--accent-border);
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: var(--shadow-subtle);
 }
 
 .theme-segment {

@@ -1,19 +1,34 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Icon } from '@iconify/vue'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
+import { enhanceRichContent } from '../utils/richContent'
 import '../styles/markdown.css'
 
 const router = useRouter()
 const uploading = ref(false)
 const selectedFile = ref(null)
 const uploadedNote = ref(null)
+const previewArticle = ref(null)
 const tagOptions = ref([])
 const selectedTagNames = ref([])
+
+// 上传预览的 rendered_html 由后端生成并已净化；这里只补客户端增强
+// （提示框、代码块折叠、Tab 代码组、公式），与详情页保持一致。
+watch(
+  () => uploadedNote.value?.rendered_html,
+  async (html) => {
+    if (!html) {
+      return
+    }
+    await nextTick()
+    enhanceRichContent(previewArticle.value)
+  }
+)
 
 const selectedFileInfo = computed(() => {
   if (!selectedFile.value) {
@@ -259,7 +274,11 @@ onMounted(() => {
                 </div>
 
                 <!-- 后端已经完成 Markdown 到 HTML 的渲染，这里直接显示结果。 -->
-                <article class="html-preview markdown-body blog-prose" v-html="uploadedNote.rendered_html"></article>
+                <article
+                  ref="previewArticle"
+                  class="html-preview markdown-body blog-prose"
+                  v-html="uploadedNote.rendered_html"
+                ></article>
               </div>
 
               <div v-else class="preview-empty">

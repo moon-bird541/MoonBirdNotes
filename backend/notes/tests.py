@@ -101,6 +101,107 @@ print("safe")
         self.assertIn('rel="nofollow noopener noreferrer"', html)
 
 
+class MarkdownExtensionTests(SimpleTestCase):
+    """Firefly 风格扩展语法的渲染契约（与前端 fenceInfo.js 保持一致）。"""
+
+    def test_plain_fenced_code_block_keeps_legacy_shape(self):
+        html = render_markdown_content('```python\nprint("safe")\n```\n')
+
+        self.assertIn('<pre><code class="language-python">', html)
+        self.assertNotIn('moonbird-code', html)
+
+    def test_github_callout_renders_titled_blockquote(self):
+        html = render_markdown_content('> [!WARNING] 自定义标题\n> 正文内容\n')
+
+        self.assertIn('moonbird-callout-warning', html)
+        self.assertIn('moonbird-callout-title', html)
+        self.assertIn('自定义标题', html)
+        self.assertNotIn('[!WARNING]', html)
+
+    def test_obsidian_callout_alias_folds_to_canonical_type(self):
+        html = render_markdown_content('> [!TLDR]\n> 摘要内容\n')
+
+        self.assertIn('moonbird-callout-abstract', html)
+        self.assertIn('摘要', html)
+
+    def test_unknown_callout_marker_is_left_as_normal_quote(self):
+        html = render_markdown_content('> [!UNKNOWN]\n> 正文\n')
+
+        self.assertNotIn('moonbird-callout', html)
+        self.assertIn('[!UNKNOWN]', html)
+
+    def test_vitepress_style_container_callout(self):
+        html = render_markdown_content(':::tip[容器标题]\n容器内容\n:::\n')
+
+        self.assertIn('moonbird-callout-tip', html)
+        self.assertIn('容器标题', html)
+        self.assertIn('容器内容', html)
+
+    def test_code_block_title_and_line_markers(self):
+        html = render_markdown_content(
+            '```js title="app.js" {1,3} ins={2} showLineNumbers startLineNumber=5\n'
+            'const a = 1\n'
+            'const b = 2\n'
+            'const c = 3\n'
+            '```\n'
+        )
+
+        self.assertIn('data-mb-title="app.js"', html)
+        self.assertIn('data-mb-start="5"', html)
+        self.assertIn('moonbird-code-lineno">5<', html)
+        self.assertIn('is-mark', html)
+        self.assertIn('is-ins', html)
+
+    def test_code_block_collapse_marks_lines(self):
+        html = render_markdown_content('```js collapse={1-2}\na\nb\nc\n```\n')
+
+        self.assertIn('data-mb-collapse="1-2"', html)
+        self.assertEqual(html.count('is-collapsed'), 2)
+
+    def test_diff_code_block_marks_added_and_removed_lines(self):
+        html = render_markdown_content('```diff\n+added\n-removed\n```\n')
+
+        self.assertIn('is-ins', html)
+        self.assertIn('is-del', html)
+
+    def test_code_group_renders_tabs_with_labels(self):
+        html = render_markdown_content(
+            '::: code-group labels=[a.js, b.py]\n\n'
+            '```js\n1\n```\n\n'
+            '```py\n2\n```\n\n'
+            ':::\n'
+        )
+
+        self.assertIn('moonbird-code-group', html)
+        self.assertIn('moonbird-code-tab', html)
+        self.assertIn('a.js', html)
+        self.assertIn('b.py', html)
+        # 容器 class 为 moonbird-code-panels，面板为 moonbird-code-panel，注意区分
+        self.assertEqual(html.count('class="moonbird-code-panel"') + html.count('class="moonbird-code-panel '), 2)
+        self.assertEqual(html.count('class="moonbird-code-panel is-active"'), 1)
+
+    def test_code_block_title_cannot_inject_markup(self):
+        html = render_markdown_content('```js title="<img src=x onerror=alert(1)>"\nx\n```\n')
+
+        # 标题只作为文本输出，尖括号必须被转义
+        self.assertNotIn('<img src=x', html)
+        self.assertIn('&lt;img src=x', html)
+
+    def test_code_group_labels_are_escaped(self):
+        html = render_markdown_content(
+            '::: code-group labels=[<img src=x onerror=alert(1)>]\n\n```js\n1\n```\n\n:::\n'
+        )
+
+        self.assertNotIn('<img src=x', html)
+        self.assertIn('&lt;img src=x', html)
+
+    def test_unclosed_container_falls_back_to_text(self):
+        html = render_markdown_content(':::tip[没有闭合]\n没有结束标记\n')
+
+        self.assertNotIn('moonbird-callout', html)
+        self.assertIn('没有结束标记', html)
+
+
 class NoteUploadSerializerSecurityTests(SimpleTestCase):
     def _serializer_for_file_size(self, size):
         uploaded_file = SimpleUploadedFile(

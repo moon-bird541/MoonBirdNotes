@@ -38,22 +38,29 @@ test.use({ viewport: { width: 2048, height: 1018 }, deviceScaleFactor: 1.25 })
 const state = () => {
   const root = document.querySelector('.wysiwyg-editor')
   const main = document.querySelector('.toastui-editor-main')
+  const ww = document.querySelector('.toastui-editor-ww-container')
   const pm = document.querySelector('.toastui-editor-ww-container .ProseMirror')
   const p = pm ? pm.querySelector('p') : null
   const box = p ? p.getBoundingClientRect() : null
+  const wwBox = ww ? ww.getBoundingClientRect() : null
   return {
     rootCls: root ? root.getAttribute('class') : null,
     mainHeight: main ? Math.round(main.getBoundingClientRect().height) : null,
     pmHeight: pm ? Math.round(pm.getBoundingClientRect().height) : null,
     pText: p ? p.textContent : null,
-    pTop: box ? Math.round(box.top) : null,
+    // 相对编辑区的位置：断言文字落在可见编辑区内部，而不是贴到页面别处
+    pOffsetTop: box && wwBox ? Math.round(box.top - wwBox.top) : null,
+    wwHeight: wwBox ? Math.round(wwBox.height) : null,
   }
 }
 
 test('empty note stays usable after first keystroke', async ({ page }) => {
   await mock(page, '')
   await page.goto('/notes/1/edit', { waitUntil: 'domcontentloaded' })
-  await page.waitForTimeout(2500)
+
+  // 并行跑全量用例时编辑器初始化可能慢于固定等待，先等根节点真正挂载
+  await expect(page.locator('.wysiwyg-editor')).toBeVisible()
+  await expect(page.locator('.toastui-editor-ww-container .ProseMirror').first()).toBeVisible()
 
   const before = await page.evaluate(state)
   expect(before.rootCls).toContain('auto-height')
@@ -73,7 +80,9 @@ test('empty note stays usable after first keystroke', async ({ page }) => {
   expect(after.mainHeight).toBeGreaterThan(400)
   // 输入的文字必须落在编辑区内部并且可见
   expect(after.pText).toContain('第一篇笔记')
-  expect(after.pTop).toBeGreaterThan(before.pTop - 10)
+  // 段落相对编辑区顶部的偏移应保持稳定（不能跑到编辑区外）
+  expect(after.pOffsetTop).toBeGreaterThanOrEqual(0)
+  expect(after.pOffsetTop).toBeLessThan(after.wwHeight)
 
   // 继续输入仍然正常
   await page.keyboard.type('，继续输入')
@@ -96,6 +105,8 @@ test('empty note stays usable after first keystroke', async ({ page }) => {
   console.log('RETYPED', JSON.stringify(retyped))
   expect(retyped.rootCls).toContain('auto-height')
   expect(retyped.mainHeight).toBeGreaterThan(400)
+  expect(retyped.pOffsetTop).toBeGreaterThanOrEqual(0)
 
-  await page.screenshot({ path: 'regression-empty-note.png' })
+  // 截图只用于失败排查，落在 test-results 下，避免污染仓库根目录
+  await page.screenshot({ path: 'test-results/regression-empty-note.png' })
 })

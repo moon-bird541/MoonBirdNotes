@@ -2,14 +2,6 @@
 import { Tickets } from '@element-plus/icons-vue'
 
 defineProps({
-  hoverBlockHintVisible: {
-    type: Boolean,
-    default: false,
-  },
-  hoverBlockHint: {
-    type: Object,
-    required: true,
-  },
   tableHoverControlVisible: {
     type: Boolean,
     default: false,
@@ -44,19 +36,6 @@ defineEmits(['open-action-panel', 'start-resize'])
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-show="hoverBlockHintVisible"
-      class="hover-block-hint"
-      :style="{
-        top: `${hoverBlockHint.top}px`,
-        left: `${hoverBlockHint.left}px`,
-      }"
-    >
-      {{ hoverBlockHint.label }}
-    </div>
-  </Teleport>
-
   <Teleport to="body">
     <button
       v-show="tableHoverControlVisible"
@@ -124,24 +103,6 @@ defineEmits(['open-action-panel', 'start-resize'])
 </template>
 
 <style scoped>
-.hover-block-hint {
-  position: fixed;
-  z-index: 199;
-  min-height: 26px;
-  padding: 0 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 999px;
-  background: var(--overlay-background);
-  box-shadow: var(--shadow-soft);
-  color: var(--brand-navy);
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 24px;
-  pointer-events: none;
-  white-space: nowrap;
-  backdrop-filter: blur(10px);
-}
-
 .table-hover-control {
   position: fixed;
   z-index: 210;

@@ -1,17 +1,36 @@
 # Frontend Quality Guidelines
 
-The current frontend gate combines a Vite production build with Playwright coverage for authenticated routed flows and API contracts.
+The current frontend gate combines a Vite production build, Vitest unit tests for pure logic, and Playwright coverage for authenticated routed flows and API contracts.
 
 ## Required Checks
 
 From `frontend/moonsbirdnotrs_vue/`:
 
 ```bash
+npm run test:unit
 npm run build
 npm run test:e2e
 ```
 
-The production build is the current syntax/import/bundle gate. The repository does not define lint, unit-test, or TypeScript-check scripts; do not report those as passing unless tooling is deliberately added.
+`npm run test:unit` runs Vitest with the jsdom environment (`vitest.config.js`) over `src/**/__tests__/**/*.test.js`. `npm run build` remains the syntax/import/bundle gate. Neither of them replaces focused manual reasoning in the high-risk areas listed below; there is still no lint or TypeScript-check script.
+
+## Unit Test Conventions
+
+Unit tests cover only what can be asserted without a real browser or backend:
+
+- pure parsing/serialization (`utils/fenceInfo.js`, `utils/tableLayout.js`, `utils/tableResize.js`, `utils/tableSelection.js`);
+- HTML generation and its sanitization contract (`utils/tableLayoutCss.js`, `utils/markdownPreview.js`, `utils/previewSanitizer.js`, `utils/renderAgentAnswer.js`);
+- small DOM-shaped logic that jsdom reproduces faithfully.
+
+Rules:
+
+- Import from the module under test, not from a copy; never re-implement behavior in the test.
+- Prefer asserting observable contracts (returned structure, escaped output, clamped sizes) over internal call order.
+- Keep `assert` from `node:assert/strict` plus `describe`/`it` from `vitest`; do not add a second assertion library.
+- If a case genuinely needs the toast-ui / ProseMirror editor or a live API, write it in `e2e/` instead of contorting the unit test.
+- When extracting logic out of a giant view, move the code into `src/utils/` first and cover it there; the view keeps only DOM orchestration.
+
+Extracted modules so far: `tableResize.js` (drag math), `tableSelection.js` (selection rect and cell lookup), `tableLayoutCss.js` (per-table `!important` rules), all consumed by `NoteEditView.vue`.
 
 ## Playwright Conventions
 
@@ -29,7 +48,7 @@ The production build is the current syntax/import/bundle gate. The repository do
 
 Repeated display values need a scoped locator. A metric such as `1,200` can legitimately appear in both a summary and a history row; scope the assertion to the named region/row, or assert the intended count explicitly, so Playwright strict mode does not turn valid duplicate text into an ambiguous match.
 
-Add/update a routed-flow test for authentication, route guards, navigation semantics, cross-page contracts, or a critical API response shape. Unit-level pure helpers currently have no configured runner; keep them small and exercise their important output through build/E2E or add test tooling only as a scoped task.
+Add/update a routed-flow test for authentication, route guards, navigation semantics, cross-page contracts, or a critical API response shape. Pure helpers belong in `src/**/__tests__/` instead; only reach for E2E when the browser or the API is genuinely part of the contract.
 
 ## Review Checklist
 
@@ -51,7 +70,7 @@ Add/update a routed-flow test for authentication, route guards, navigation seman
 - Batch pagination/state transitions in note/trash/image lists.
 - Agent source navigation, conversation persistence, trace privacy, and long-request error handling.
 
-Changes in these areas need focused manual reasoning plus the build and relevant E2E/backend tests.
+Changes in these areas need focused manual reasoning plus the build and relevant E2E/backend tests. When table or selection logic changes, `npm run test:unit` also covers the extracted `table*.js` helpers — run it before touching those files.
 
 ## Anti-Patterns
 

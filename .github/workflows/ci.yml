@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main, codex/develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: moonbird_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      SECRET_KEY: ci-only-secret-key-not-used-in-production
+      DEBUG: 'True'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CSRF_TRUSTED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      DB_NAME: moonbird_ci
+      DB_USER: root
+      DB_PASSWORD: ci-root-password
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      ADMIN_USERNAME: ci-admin
+      ADMIN_PASSWORD: ci-admin-password
+      SILICONFLOW_API_KEY: ''
+      AGENT_LLM_API_KEY: ''
+      QDRANT_URL: http://127.0.0.1:6333
+      CACHE_URL: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      # settings.py 通过 backend/.env 读取配置；CI 里用环境变量生成一份等价的文件。
+      - name: Write .env from CI environment
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          keys = [
+              'SECRET_KEY', 'DEBUG', 'ALLOWED_HOSTS', 'CSRF_TRUSTED_ORIGINS',
+              'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT',
+              'ADMIN_USERNAME', 'ADMIN_PASSWORD', 'SILICONFLOW_API_KEY',
+              'AGENT_LLM_API_KEY', 'QDRANT_URL', 'CACHE_URL',
+          ]
+          Path('.env').write_text(
+              ''.join(f'{key}={os.environ.get(key, "")}\n' for key in keys),
+              encoding='utf-8',
+          )
+          PY
+      - name: Django system check
+        run: python manage.py check
+      - name: Migrations are committed
+        run: python manage.py makemigrations --check --dry-run
+      - name: Backend tests
+        run: python manage.py test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/moonsbirdnotrs_vue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/moonsbirdnotrs_vue/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Build
+        run: npm run build

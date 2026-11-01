@@ -19,7 +19,9 @@ import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
 import diaryEmptyIllustration from '../assets/diary-empty-illustration.png'
 import { enhanceRichContent } from '../utils/richContent'
+import { expandDirectives } from '../utils/directives'
 import { applyTableLayoutsToTables, extractTableLayoutMetadata } from '../utils/tableLayout'
+import { createViewerRendererRegistry } from '../utils/viewerRenderer'
 import '../styles/markdown.css'
 
 const route = useRoute()
@@ -40,6 +42,7 @@ let rippleSeed = 0
 
 let viewerInstance = null
 let viewerTableLayouts = []
+const viewerRenderer = createViewerRendererRegistry()
 
 const padDatePart = (value) => String(value).padStart(2, '0')
 
@@ -228,6 +231,10 @@ const renderViewerContent = async () => {
   const viewerMarkdown = removeDuplicatedDiaryTitle(parsedMarkdown.markdown, selectedEntry.value.title)
   viewerTableLayouts = parsedMarkdown.layouts
 
+  // `:::` 容器语法在 toast-ui 里没有对应语义，先展开成引用块 + 代码组占位注释
+  const expanded = expandDirectives(viewerMarkdown)
+  viewerRenderer.setGroups(expanded.groups)
+
   const applyViewerTableLayouts = () => {
     applyTableLayoutsToTables(
       articleViewer.value?.querySelectorAll('.toastui-editor-contents table') || [],
@@ -246,14 +253,15 @@ const renderViewerContent = async () => {
   if (!viewerInstance) {
     viewerInstance = new Viewer({
       el: articleViewer.value,
-      initialValue: viewerMarkdown,
+      initialValue: expanded.markdown,
       usageStatistics: false,
+      customHTMLRenderer: viewerRenderer.options,
     })
     scheduleViewerTableLayouts()
     return
   }
 
-  viewerInstance.setMarkdown(viewerMarkdown)
+  viewerInstance.setMarkdown(expanded.markdown)
   scheduleViewerTableLayouts()
 }
 

@@ -7,6 +7,7 @@ from django.db import transaction
 from rest_framework import serializers
 from bleach.html5lib_shim import Filter
 
+from .markdown_extensions import MoonBirdMarkdownExtension
 from .models import DiaryEntry, Note, NoteImage, NoteVersion, Tag
 from .text import count_markdown_words, markdown_to_plain_text
 
@@ -53,20 +54,27 @@ ALLOWED_MARKDOWN_TAGS = [
     'td',
     'div',
     'span',
+    'button',
+    'kbd',
+    'sup',
+    'sub',
 ]
 ALLOWED_MARKDOWN_ATTRIBUTES = {
     'a': ['href', 'title', 'target', 'rel'],
-    'img': ['src', 'alt', 'title', 'width', 'height'],
+    'img': ['src', 'alt', 'title', 'width', 'height', 'loading', 'decoding'],
     'code': ['class'],
     'pre': ['class'],
     'div': ['class'],
-    'span': ['class'],
+    'span': ['class', 'role', 'tabindex', 'aria-selected'],
     'h1': ['id'],
     'h2': ['id'],
     'h3': ['id'],
     'h4': ['id'],
     'h5': ['id'],
     'h6': ['id'],
+    # 代码块与提示框的扩展语法标记（title/行标记/折叠/行号/折叠开关）
+    '*': ['class', 'data-mb-lang', 'data-mb-title', 'data-mb-collapse', 'data-mb-start', 'data-mb-role'],
+    'button': ['class', 'type', 'aria-expanded', 'hidden'],
 }
 ALLOWED_MARKDOWN_PROTOCOLS = ['http', 'https', 'mailto']
 
@@ -91,7 +99,7 @@ class AnchorRelFilter(Filter):
 def render_markdown_content(markdown_content):
     html = markdown.markdown(
         markdown_content,
-        extensions=['extra', 'fenced_code', 'tables', 'toc'],
+        extensions=['extra', 'tables', 'toc', MoonBirdMarkdownExtension()],
     )
 
     cleaner = bleach.Cleaner(

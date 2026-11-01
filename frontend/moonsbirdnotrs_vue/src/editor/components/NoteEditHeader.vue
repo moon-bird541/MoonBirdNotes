@@ -1,5 +1,5 @@
 <script setup>
-import { Back, Check, Clock } from '@element-plus/icons-vue'
+import { Back, Check, Clock, View } from '@element-plus/icons-vue'
 
 defineProps({
   saving: {
@@ -16,7 +16,7 @@ defineProps({
   },
 })
 
-defineEmits(['back', 'save'])
+defineEmits(['back', 'save', 'preview'])
 </script>
 
 <template>
@@ -31,10 +31,17 @@ defineEmits(['back', 'save'])
       <span>{{ autoSaveStatusText }}</span>
     </div>
 
-    <el-button class="save-button" type="primary" :loading="saving" @click="$emit('save')">
-      <el-icon><Check /></el-icon>
-      <span>创建版本</span>
-    </el-button>
+    <div class="edit-header-actions">
+      <el-button class="preview-button" @click="$emit('preview')">
+        <el-icon><View /></el-icon>
+        <span>正文预览</span>
+      </el-button>
+
+      <el-button class="save-button" type="primary" :loading="saving" @click="$emit('save')">
+        <el-icon><Check /></el-icon>
+        <span>创建版本</span>
+      </el-button>
+    </div>
   </header>
 </template>
 
@@ -105,6 +112,26 @@ defineEmits(['back', 'save'])
   box-shadow: none;
 }
 
+.edit-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-button {
+  min-height: 44px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--control-background);
+  color: var(--brand-navy);
+}
+
+.preview-button:hover {
+  border-color: var(--accent-border);
+  background: var(--control-hover-background);
+  color: var(--brand-blue);
+}
+
 @media (max-width: 720px) {
   .edit-header {
     flex-wrap: wrap;
@@ -115,16 +142,16 @@ defineEmits(['back', 'save'])
     order: 1;
   }
 
+  .edit-header-actions {
+    order: 2;
+    margin-left: auto;
+  }
+
   .auto-save-badge {
     order: 3;
     width: 100%;
     justify-content: center;
     font-size: 0.85rem;
-  }
-
-  .save-button {
-    order: 2;
-    margin-left: auto;
   }
 }
 </style>

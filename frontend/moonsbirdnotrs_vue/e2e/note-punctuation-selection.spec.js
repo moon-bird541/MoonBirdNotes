@@ -168,7 +168,7 @@ test('a deliberate editor selection remains non-empty without text input', async
     collapsed: false,
     text: '\u4f60',
   })
-  await expect(page.locator('.floating-toolbar')).toBeVisible()
+  await expect(page.getByRole('navigation', { name: '固定正文工具栏' })).toBeVisible()
 })
 
 test('punctuation in an embedded editor input does not collapse a document selection', async ({ page }) => {
