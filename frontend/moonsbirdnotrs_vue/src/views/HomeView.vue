@@ -32,8 +32,8 @@ const taskStats = ref({
   completed_today: 0,
 })
 
-// 热力图展示 16 周（约 4 个月），在大宽屏下更加舒展饱满
-const HEATMAP_WEEK_COUNT = 16
+// 热力图展示 22 周（近半年 / 约 154 天），使点阵区饱满自如，与右侧指标区黄金对称
+const HEATMAP_WEEK_COUNT = 22
 const recentIconNames = ['ph:article', 'ph:book-open', 'ph:code', 'ph:pencil-line', 'ph:sparkle', 'ph:feather']
 const recentToneNames = ['paper', 'moss', 'gold', 'blue', 'stone', 'violet']
 
@@ -228,6 +228,26 @@ const heatmapWeeks = computed(() => {
   )
 })
 
+// 计算月份刻度，精准对应到某一周的列上
+const monthLabels = computed(() => {
+  const labels = []
+  let lastMonth = -1
+
+  heatmapWeeks.value.forEach((week, weekIndex) => {
+    const date = new Date(week[0].date)
+    const month = date.getMonth()
+    if (month !== lastMonth) {
+      labels.push({
+        weekIndex,
+        text: `${month + 1}月`,
+      })
+      lastMonth = month
+    }
+  })
+
+  return labels
+})
+
 onMounted(() => {
   fetchSummary()
   fetchTasks()
@@ -379,7 +399,7 @@ onMounted(() => {
 
           <!-- 右侧主阅读与足迹栏 (1fr) -->
           <div class="desk-main-column fade-rise-enter-delay-2">
-            <!-- 3. 笔耕足迹（热力图 + 3个指标卡，饱满无缝对接） -->
+            <!-- 3. 笔耕足迹（带月份刻度 + 星期刻度 + 紧密咬合的指标卡片，绝无空洞） -->
             <section class="activity-board desk-card" aria-label="笔耕足迹">
               <div class="panel-head">
                 <div class="panel-title">
@@ -390,21 +410,51 @@ onMounted(() => {
               </div>
 
               <div class="activity-body">
+                <!-- 左翼：点阵图面板（带月份标尺与星期标尺） -->
                 <div class="activity-heatmap-panel">
                   <div class="activity-heatmap-wrap">
-                    <div class="activity-heatmap" role="img" aria-label="每天上传笔记数量">
-                      <div v-for="(week, weekIndex) in heatmapWeeks" :key="weekIndex" class="activity-week">
+                    <!-- 月份标尺 -->
+                    <div class="heatmap-month-row" aria-hidden="true">
+                      <span class="heatmap-axis-spacer"></span>
+                      <div class="heatmap-months-track">
                         <span
-                          v-for="day in week"
-                          :key="day.date"
-                          class="activity-day"
-                          :class="[`is-level-${day.level}`, { 'is-future': day.isFuture }]"
-                          :title="day.label"
-                        ></span>
+                          v-for="item in monthLabels"
+                          :key="item.weekIndex"
+                          class="heatmap-month-label"
+                          :style="{ gridColumnStart: item.weekIndex + 1 }"
+                        >
+                          {{ item.text }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- 星期标尺 + 点阵核心 -->
+                    <div class="heatmap-grid-row">
+                      <div class="heatmap-weekday-labels" aria-hidden="true">
+                        <span></span>
+                        <span>一</span>
+                        <span></span>
+                        <span>三</span>
+                        <span></span>
+                        <span>五</span>
+                        <span></span>
+                      </div>
+
+                      <div class="activity-heatmap" role="img" aria-label="每天上传笔记数量">
+                        <div v-for="(week, weekIndex) in heatmapWeeks" :key="weekIndex" class="activity-week">
+                          <span
+                            v-for="day in week"
+                            :key="day.date"
+                            class="activity-day"
+                            :class="[`is-level-${day.level}`, { 'is-future': day.isFuture }]"
+                            :title="day.label"
+                          ></span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
+                  <!-- 图例 -->
                   <div class="activity-legend" aria-hidden="true">
                     <span>少</span>
                     <i class="is-level-0"></i>
@@ -416,36 +466,50 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <!-- 3 个独立的温润小统计卡片，饱满填补空间 -->
+                <!-- 中间优雅的纵向分割虚线 -->
+                <div class="activity-divider" aria-hidden="true"></div>
+
+                <!-- 右翼：3 个等宽自适应铺满指标卡组 -->
                 <div class="activity-summary-cards" aria-label="近一个月写作状态">
                   <div class="stat-badge-card">
-                    <div class="badge-card-icon is-green">
-                      <Icon icon="ph:calendar-check" />
-                    </div>
-                    <div class="badge-card-info">
+                    <div class="badge-card-top">
                       <span class="badge-card-label">活跃天数</span>
-                      <strong class="badge-card-value">{{ activeActivityDays }} <small>天</small></strong>
+                      <span class="badge-card-icon is-green">
+                        <Icon icon="ph:calendar-check" />
+                      </span>
                     </div>
+                    <div class="badge-card-value-row">
+                      <strong class="badge-card-value">{{ activeActivityDays }}</strong>
+                      <span class="badge-card-unit">天</span>
+                    </div>
+                    <span class="badge-card-hint">近 30 天持续记录</span>
                   </div>
 
                   <div class="stat-badge-card">
-                    <div class="badge-card-icon is-gold">
-                      <Icon icon="ph:star" />
-                    </div>
-                    <div class="badge-card-info">
+                    <div class="badge-card-top">
                       <span class="badge-card-label">单日最高</span>
-                      <strong class="badge-card-value">{{ maxActivityCount }} <small>篇</small></strong>
+                      <span class="badge-card-icon is-gold">
+                        <Icon icon="ph:star" />
+                      </span>
                     </div>
+                    <div class="badge-card-value-row">
+                      <strong class="badge-card-value">{{ maxActivityCount }}</strong>
+                      <span class="badge-card-unit">篇</span>
+                    </div>
+                    <span class="badge-card-hint">灵感创作峰值</span>
                   </div>
 
                   <div class="stat-badge-card">
-                    <div class="badge-card-icon is-blue">
-                      <Icon icon="ph:feather" />
-                    </div>
-                    <div class="badge-card-info">
+                    <div class="badge-card-top">
                       <span class="badge-card-label">书桌状态</span>
+                      <span class="badge-card-icon is-blue">
+                        <Icon icon="ph:feather" />
+                      </span>
+                    </div>
+                    <div class="badge-card-value-row">
                       <strong class="badge-card-value is-mood">{{ writingMood }}</strong>
                     </div>
+                    <span class="badge-card-hint">墨迹常读常新</span>
                   </div>
                 </div>
               </div>
@@ -928,7 +992,7 @@ onMounted(() => {
   font-weight: 700;
 }
 
-/* ================== 3. 笔耕足迹（热力图 + 徽章卡片） ================== */
+/* ================== 3. 笔耕足迹（热力图 + 徽章卡片充实咬合） ================== */
 .activity-submeta {
   color: var(--text-muted);
   font-size: 0.88rem;
@@ -937,23 +1001,71 @@ onMounted(() => {
 
 .activity-body {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  align-items: stretch;
   gap: 28px;
-  padding-top: 18px;
+  padding-top: 16px;
 }
 
 .activity-heatmap-panel {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 }
 
 .activity-heatmap-wrap {
   overflow-x: auto;
   padding-bottom: 2px;
+}
+
+/* 月份标尺 */
+.heatmap-month-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.heatmap-axis-spacer {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.heatmap-months-track {
+  display: grid;
+  grid-template-columns: repeat(22, 15px);
+  gap: 5px;
+  width: max-content;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.heatmap-month-label {
+  white-space: nowrap;
+}
+
+/* 星期标尺与点阵 */
+.heatmap-grid-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.heatmap-weekday-labels {
+  display: grid;
+  grid-template-rows: repeat(7, 15px);
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  line-height: 15px;
+  text-align: right;
+  width: 18px;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .activity-heatmap {
@@ -983,8 +1095,8 @@ onMounted(() => {
 }
 
 .activity-day:hover {
-  transform: scale(1.25);
-  box-shadow: 0 4px 10px rgba(42, 33, 23, 0.12);
+  transform: scale(1.28);
+  box-shadow: 0 4px 10px rgba(42, 33, 23, 0.14);
 }
 
 .activity-day.is-future {
@@ -1015,47 +1127,79 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding-left: 26px;
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
-/* 3 个独立的温润小统计卡片 */
+/* 纵向分割虚线 */
+.activity-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--divider);
+  flex-shrink: 0;
+}
+
+/* 右翼 3 个指标卡片组（撑满右侧剩余全部空间，彻底消灭中间空白荒漠） */
 .activity-summary-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(110px, 1fr));
-  gap: 12px;
-  flex: 0 1 420px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: stretch;
 }
 
 .stat-badge-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
   border: 1px solid var(--border-soft);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--panel-background-soft);
-  transition: transform 0.16s var(--motion-snappy), background 0.16s ease;
+  transition:
+    transform 0.18s var(--motion-snappy),
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .stat-badge-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background: var(--control-hover-background);
+  border-color: var(--accent-border);
+  box-shadow: 0 6px 16px rgba(42, 33, 23, 0.07);
+}
+
+.badge-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.badge-card-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .badge-card-icon {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   flex-shrink: 0;
 }
 
 .badge-card-icon svg {
-  width: 1.18rem;
-  height: 1.18rem;
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .badge-card-icon.is-green {
@@ -1073,36 +1217,36 @@ onMounted(() => {
   color: var(--brand-blue);
 }
 
-.badge-card-info {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.badge-card-label {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  white-space: nowrap;
+.badge-card-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .badge-card-value {
   color: var(--text-primary);
-  font-size: 1.35rem;
+  font-size: clamp(1.5rem, 2vw, 1.85rem);
   font-weight: 850;
-  line-height: 1.15;
-  white-space: nowrap;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
 }
 
-.badge-card-value small {
-  font-size: 0.78rem;
+.badge-card-unit {
+  font-size: 0.82rem;
   font-weight: 650;
   color: var(--text-muted);
 }
 
 .badge-card-value.is-mood {
-  font-size: 1.05rem;
+  font-size: clamp(1.1rem, 1.4vw, 1.3rem);
   color: var(--brand-blue);
+  line-height: 1.25;
+}
+
+.badge-card-hint {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  line-height: 1.2;
 }
 
 /* ================== 4. 最近手迹 (2 列手账卡片网格) ================== */
@@ -1359,13 +1503,23 @@ onMounted(() => {
 }
 
 /* ================== 响应式适配 ================== */
-@media (max-width: 1200px) {
+@media (max-width: 1240px) {
   .recent-cards-grid {
     grid-template-columns: 1fr;
   }
 
+  .activity-body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .activity-divider {
+    display: none;
+  }
+
   .activity-summary-cards {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
   }
 }
 
