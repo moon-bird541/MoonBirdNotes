@@ -9,7 +9,6 @@
    showLineNumbers startLineNumber=5 collapse={1-4} wrap=false frame=none
 3. 代码组：`::: code-group labels=[a.js, b.py]` 包住多个代码块
 
-设计约定见 `.trellis/tasks/10-27-firefly-markdown-extensions/design.md`。
 前端只负责交互（折叠、标签切换）与样式，类名与 data 属性保持一一对应。
 """
 
