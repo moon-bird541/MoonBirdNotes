@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import {
   ElButton,
   ElCheckbox,
+  ElDatePicker,
   ElDialog,
   ElDropdown,
   ElDropdownItem,
@@ -13,6 +14,7 @@ import {
   ElInputNumber,
   ElLoading,
   ElOption,
+  ElOptionGroup,
   ElPagination,
   ElPopover,
   ElRadioButton,
@@ -27,6 +29,8 @@ import {
 import 'element-plus/theme-chalk/base.css'
 import 'element-plus/theme-chalk/el-button.css'
 import 'element-plus/theme-chalk/el-checkbox.css'
+// el-date-picker.css 是空壳，日期/时间面板的样式实际在 el-date-picker-panel.css 里。
+import 'element-plus/theme-chalk/el-date-picker-panel.css'
 import 'element-plus/theme-chalk/el-dialog.css'
 import 'element-plus/theme-chalk/el-dropdown.css'
 import 'element-plus/theme-chalk/el-dropdown-item.css'
@@ -40,6 +44,7 @@ import 'element-plus/theme-chalk/el-loading.css'
 import 'element-plus/theme-chalk/el-message.css'
 import 'element-plus/theme-chalk/el-message-box.css'
 import 'element-plus/theme-chalk/el-option.css'
+import 'element-plus/theme-chalk/el-option-group.css'
 import 'element-plus/theme-chalk/el-overlay.css'
 import 'element-plus/theme-chalk/el-pagination.css'
 import 'element-plus/theme-chalk/el-popover.css'
@@ -64,6 +69,7 @@ initTheme()
 const elementComponents = [
   ElButton,
   ElCheckbox,
+  ElDatePicker,
   ElDialog,
   ElDropdown,
   ElDropdownItem,
@@ -74,6 +80,7 @@ const elementComponents = [
   ElInput,
   ElInputNumber,
   ElOption,
+  ElOptionGroup,
   ElPagination,
   ElPopover,
   ElRadioButton,

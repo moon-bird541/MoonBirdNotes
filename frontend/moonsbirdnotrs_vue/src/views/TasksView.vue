@@ -498,8 +498,9 @@ onMounted(async () => {
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="min(92vw, 560px)"
+      width="min(94vw, 760px)"
       class="task-dialog"
+      top="8vh"
       @closed="resetForm"
     >
       <div class="task-form">

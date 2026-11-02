@@ -46,6 +46,30 @@ const notes = {
   ],
 }
 
+const taskSummary = {
+  todo_tasks: [
+    {
+      id: 7,
+      title: '写验收脚本',
+      start_at: '2026-07-16T08:00:00Z',
+      end_at: '2026-07-16T10:00:00Z',
+      urgency: 3,
+      urgency_display: '高',
+      is_completed: false,
+      has_time: true,
+      is_overdue: false,
+      segment: 'todo',
+      linked_note: null,
+    },
+  ],
+  stats: {
+    todo_count: 1,
+    project_count: 0,
+    overdue_count: 0,
+    completed_today: 0,
+  },
+}
+
 const fulfillJson = (route, status, body) =>
   route.fulfill({
     status,
@@ -84,6 +108,10 @@ const mockApi = async (page, { authenticated = false } = {}) => {
 
     if (path === '/api/notes/summary/') {
       return fulfillJson(route, 200, summary)
+    }
+
+    if (path === '/api/tasks/summary/') {
+      return fulfillJson(route, 200, taskSummary)
     }
 
     if (path === '/api/notes/tags/') {
