@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 28px;
+  gap: 16px;
   position: relative;
   z-index: 1;
   min-height: calc(100svh - 54px);
@@ -319,16 +319,16 @@ onBeforeUnmount(() => {
 
 .sidebar-nav {
   display: grid;
-  gap: 14px;
+  gap: 6px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   min-width: 0;
-  min-height: 54px;
-  padding: 14px 22px;
+  min-height: 42px;
+  padding: 10px 16px;
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
@@ -410,7 +410,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  min-height: 58px;
+  min-height: 44px;
   padding: 0 18px;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
