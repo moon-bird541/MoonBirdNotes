@@ -292,3 +292,38 @@ Committed the deployed MoonBirdNotes production baseline after backend, migratio
 ### Status
 
 [OK] **Completed**
+
+## Session 9: 部署到生产环境（moonbird.asia）
+
+**Date**: 2026-11-02
+**Branch**: `codex/develop`（`48531e6`）
+
+### 部署方式
+
+服务器 `root@218.244.140.226:/root/moonbirdnotes` 不是 git 仓库（只有源码副本），因此
+用 `git archive` 打出当前 commit 的 tar 包上传、解包到临时目录，再 rsync 覆盖：
+- backend 保留 `.env / media / staticfiles`；
+- frontend 保留 `node_modules / dist`；
+- 根目录只同步文档，**不动 `backend.env` 与 `.env`**（含生产密码）。
+
+部署前做了双备份：`/root/moonbirdnotes-releases/app-<TS>-{backend,frontend}` 源码快照 +
+`moonbirdnotes-{backend,web}:rollback-<TS>` 镜像。
+
+### 踩到的坑
+
+**容器脚本 CRLF**：Windows 侧 `core.autocrlf=true` 把 `docker-entrypoint.sh` 转成 CRLF，
+`sh` 解析到 `set -eu\r` 直接报 `set: Illegal option -`，backend 每 5 秒重启一次、
+healthcheck 永远是 unhealthy。已在 `.gitattributes` 里钉死
+`*.sh / Dockerfile text eol=lf`，并用 `git archive` 验证导出的确实是 LF。
+
+### 线上验证
+
+- `https://moonbird.asia/` 200；`/api/session/` 401（未登录，符合预期）
+- 容器：backend healthy、web/worker Up，六个服务全部在运行
+- 产物里确认：`is-pinned` / `fixed-toolbar-sentinel` / `IntersectionObserver` 都在
+  新 chunk 里；`floating-toolbar` 残留引用为 0
+- 容器内跑一次渲染：提示框 / 代码块标题 / 行标记 / code-group 全部 True
+
+### Status
+
+[OK] **Completed**
