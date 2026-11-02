@@ -32,9 +32,10 @@ const taskStats = ref({
   completed_today: 0,
 })
 
-const HEATMAP_WEEK_COUNT = 11
-const recentIconNames = ['ph:article', 'ph:book-open', 'ph:code', 'ph:pencil-line', 'ph:sparkle']
-const recentToneNames = ['paper', 'moss', 'gold', 'blue', 'stone']
+// 热力图展示 16 周（约 4 个月），在大宽屏下更加舒展饱满
+const HEATMAP_WEEK_COUNT = 16
+const recentIconNames = ['ph:article', 'ph:book-open', 'ph:code', 'ph:pencil-line', 'ph:sparkle', 'ph:feather']
+const recentToneNames = ['paper', 'moss', 'gold', 'blue', 'stone', 'violet']
 
 const currentUser = computed(() => {
   const raw = localStorage.getItem('current_user')
@@ -66,7 +67,7 @@ const activeActivityDays = computed(
   () => uploadActivity.value.filter((item) => Number(item.count || 0) > 0).length
 )
 
-// 替换掉原本冰冷挫败的“日均0.0”，以书桌心境状态呈现
+// 替换掉冰冷挫败的“日均0.0”，以书桌心境状态呈现
 const writingMood = computed(() => {
   if (totalActivityCount.value >= 10) return '文思泉涌'
   if (totalActivityCount.value >= 3) return '笔耕不辍'
@@ -78,9 +79,10 @@ const fetchSummary = async () => {
   summaryLoading.value = true
 
   try {
+    // 拉取 6 篇最近笔记，在双列网格下正好呈现 3 排对齐
     const { data } = await api.get('/notes/summary/', {
       params: {
-        recent_limit: 5,
+        recent_limit: 6,
       },
     })
 
@@ -279,7 +281,7 @@ onMounted(() => {
               提笔新记
             </el-button>
             <el-button class="cta-button-secondary" size="large" @click="goToNotes">
-              全部笔记
+              全部手稿
               <Icon icon="ph:arrow-right" />
             </el-button>
           </div>
@@ -287,7 +289,7 @@ onMounted(() => {
 
         <!-- 主内容区：左侧辅助栏 (待办 + 标签云) + 右侧主内容 (热力足迹 + 最近手迹) -->
         <div class="desk-grid">
-          <!-- 左侧辅助列 (350px) -->
+          <!-- 左侧辅助列 (自适应 clamp 宽度) -->
           <div class="desk-side-column fade-rise-enter-delay">
             <!-- 1. 今日待办 (纯粹的行动清单，支持快捷勾选) -->
             <section v-loading="taskLoading" class="overview-board desk-card" aria-label="今日待办">
@@ -339,7 +341,7 @@ onMounted(() => {
               </div>
             </section>
 
-            <!-- 2. 知识领域 (标签胶囊云，告别灰暗长条进度条) -->
+            <!-- 2. 知识领域 (标签胶囊云，饱满错落) -->
             <section class="tag-board desk-card" aria-label="知识领域">
               <div class="panel-head">
                 <div class="panel-title">
@@ -359,7 +361,7 @@ onMounted(() => {
                   class="tag-pill"
                   type="button"
                   @click="goToTags"
-                  :title="`查看「${tag.name}」相关笔记 (${tag.count} 篇)`"
+                  :title="`查看「${tag.name}」相关手稿 (${tag.count} 篇)`"
                 >
                   <span class="tag-pill-hash">#</span>
                   <span class="tag-pill-name">{{ tag.name }}</span>
@@ -377,7 +379,7 @@ onMounted(() => {
 
           <!-- 右侧主阅读与足迹栏 (1fr) -->
           <div class="desk-main-column fade-rise-enter-delay-2">
-            <!-- 3. 笔耕足迹（热力图，去除冰冷挫败的日均0.0） -->
+            <!-- 3. 笔耕足迹（热力图 + 3个指标卡，饱满无缝对接） -->
             <section class="activity-board desk-card" aria-label="笔耕足迹">
               <div class="panel-head">
                 <div class="panel-title">
@@ -390,7 +392,7 @@ onMounted(() => {
               <div class="activity-body">
                 <div class="activity-heatmap-panel">
                   <div class="activity-heatmap-wrap">
-                    <div class="activity-heatmap" role="img" aria-label="近一个月每天上传笔记数量">
+                    <div class="activity-heatmap" role="img" aria-label="每天上传笔记数量">
                       <div v-for="(week, weekIndex) in heatmapWeeks" :key="weekIndex" class="activity-week">
                         <span
                           v-for="day in week"
@@ -414,28 +416,42 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <!-- 更有温度的 3 个统计卡片 -->
-                <div class="activity-summary" aria-label="近一个月写作状态">
-                  <div class="activity-summary-item">
-                    <span class="summary-icon is-green"><Icon icon="ph:calendar-check" /></span>
-                    <span class="summary-label">活跃天数</span>
-                    <strong>{{ activeActivityDays }} <small>天</small></strong>
+                <!-- 3 个独立的温润小统计卡片，饱满填补空间 -->
+                <div class="activity-summary-cards" aria-label="近一个月写作状态">
+                  <div class="stat-badge-card">
+                    <div class="badge-card-icon is-green">
+                      <Icon icon="ph:calendar-check" />
+                    </div>
+                    <div class="badge-card-info">
+                      <span class="badge-card-label">活跃天数</span>
+                      <strong class="badge-card-value">{{ activeActivityDays }} <small>天</small></strong>
+                    </div>
                   </div>
-                  <div class="activity-summary-item">
-                    <span class="summary-icon is-gold"><Icon icon="ph:star" /></span>
-                    <span class="summary-label">单日最高</span>
-                    <strong>{{ maxActivityCount }} <small>篇</small></strong>
+
+                  <div class="stat-badge-card">
+                    <div class="badge-card-icon is-gold">
+                      <Icon icon="ph:star" />
+                    </div>
+                    <div class="badge-card-info">
+                      <span class="badge-card-label">单日最高</span>
+                      <strong class="badge-card-value">{{ maxActivityCount }} <small>篇</small></strong>
+                    </div>
                   </div>
-                  <div class="activity-summary-item">
-                    <span class="summary-icon is-blue"><Icon icon="ph:feather" /></span>
-                    <span class="summary-label">书桌状态</span>
-                    <strong class="status-text">{{ writingMood }}</strong>
+
+                  <div class="stat-badge-card">
+                    <div class="badge-card-icon is-blue">
+                      <Icon icon="ph:feather" />
+                    </div>
+                    <div class="badge-card-info">
+                      <span class="badge-card-label">书桌状态</span>
+                      <strong class="badge-card-value is-mood">{{ writingMood }}</strong>
+                    </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            <!-- 4. 最近手迹（5 篇手账卡片） -->
+            <!-- 4. 最近手迹（双列手账卡片网格，彻底告别单行拉扯空洞感） -->
             <section class="recent-panel desk-card" aria-label="最近手迹">
               <div class="panel-head">
                 <div class="panel-title">
@@ -448,45 +464,55 @@ onMounted(() => {
                 </button>
               </div>
 
-              <div v-if="recentNotes.length" class="recent-note-list">
+              <div v-if="recentNotes.length" class="recent-cards-grid">
                 <article
                   v-for="(note, index) in recentNotes"
                   :key="note.id"
-                  class="recent-note-item"
+                  class="note-shelf-card"
                   @click="goToDetail(note)"
                 >
-                  <!-- 左侧图标与时间 -->
-                  <div class="item-visual-col">
-                    <span class="item-type-icon" :class="`is-${resolveRecentTone(index)}`">
-                      <Icon :icon="resolveRecentIcon(index)" />
-                    </span>
-                    <span class="item-date">{{ formatDateTime(note.updated_at || note.created_at) }}</span>
+                  <!-- 卡片顶栏：时间与置顶/分类图标 -->
+                  <div class="shelf-card-top">
+                    <div class="shelf-card-date">
+                      <Icon icon="ph:clock" />
+                      <span>{{ formatDateTime(note.updated_at || note.created_at) }}</span>
+                    </div>
+
+                    <div class="shelf-card-badges">
+                      <span v-if="note.is_pinned" class="shelf-pinned-badge" title="置顶手稿">
+                        <Icon icon="ph:push-pin-fill" />
+                        <span>置顶</span>
+                      </span>
+                      <span class="shelf-type-icon" :class="`is-${resolveRecentTone(index)}`">
+                        <Icon :icon="resolveRecentIcon(index)" />
+                      </span>
+                    </div>
                   </div>
 
-                  <!-- 主体内容：标题、真实标签、优雅2行摘要 -->
-                  <div class="item-content-col">
-                    <div class="item-title-row">
-                      <h3 class="item-title">
-                        <span v-if="note.is_pinned" class="pinned-tag" title="置顶手稿">
-                          <Icon icon="ph:push-pin-fill" />
-                        </span>
-                        {{ note.title || '未命名手稿' }}
-                      </h3>
-
-                      <div v-if="note.tags && note.tags.length" class="item-tags">
-                        <span v-for="tag in note.tags.slice(0, 2)" :key="tag.id || tag.name" class="item-tag-pill">
+                  <!-- 卡片内容主体 -->
+                  <div class="shelf-card-main">
+                    <div class="shelf-title-tags">
+                      <h3 class="shelf-card-title">{{ note.title || '未命名手稿' }}</h3>
+                      
+                      <div v-if="note.tags && note.tags.length" class="shelf-card-tags">
+                        <span v-for="tag in note.tags.slice(0, 2)" :key="tag.id || tag.name" class="shelf-tag-pill">
                           #{{ tag.name }}
                         </span>
                       </div>
                     </div>
 
-                    <p class="item-excerpt">{{ note.excerpt }}</p>
+                    <p class="shelf-card-excerpt">{{ note.excerpt }}</p>
                   </div>
 
-                  <!-- 右侧元信息与交互反馈 -->
-                  <div class="item-meta-col">
-                    <span class="item-word-count">{{ formatWordCount(note.word_count) }}</span>
-                    <span class="item-enter-btn" title="查看手稿">
+                  <!-- 卡片底栏：字数与进入操作 -->
+                  <div class="shelf-card-footer">
+                    <span class="shelf-card-words">
+                      <Icon icon="ph:text-t" />
+                      {{ formatWordCount(note.word_count) }}
+                    </span>
+
+                    <span class="shelf-card-action">
+                      <span>阅读手稿</span>
                       <Icon icon="ph:arrow-up-right" />
                     </span>
                   </div>
@@ -514,10 +540,13 @@ onMounted(() => {
   background: var(--app-background);
 }
 
+/* 撑满主视口，去掉原本 margin: 0 auto 造成的左右孤岛大空白 */
 .home-stage {
-  width: min(100%, 1400px);
-  margin: 0 auto;
-  padding: 44px 48px 48px 54px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 36px 40px 48px;
+  box-sizing: border-box;
 }
 
 /* ================== 顶部 Header 与 墨迹印章条 ================== */
@@ -526,7 +555,7 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 28px;
+  padding-bottom: 24px;
 }
 
 .topbar-welcome {
@@ -546,7 +575,7 @@ onMounted(() => {
   gap: 12px;
   margin: 0;
   color: var(--text-primary);
-  font-size: clamp(2rem, 2.4vw, 2.45rem);
+  font-size: clamp(2rem, 2.3vw, 2.45rem);
   font-weight: 850;
   line-height: 1.1;
   letter-spacing: -0.01em;
@@ -562,7 +591,7 @@ onMounted(() => {
 .home-subtitle {
   margin: 10px 0 0;
   color: var(--ink-soft);
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   line-height: 1.5;
 }
 
@@ -625,15 +654,15 @@ onMounted(() => {
 .home-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   padding-top: 4px;
   flex-shrink: 0;
 }
 
 .home-actions :deep(.el-button) {
-  height: 46px;
-  min-height: 46px;
-  padding-inline: 20px;
+  height: 44px;
+  min-height: 44px;
+  padding-inline: 18px;
   border-radius: 10px;
   font-size: 0.94rem;
   font-weight: 750;
@@ -667,8 +696,8 @@ onMounted(() => {
 /* ================== 主网格布局 ================== */
 .desk-grid {
   display: grid;
-  grid-template-columns: 350px minmax(0, 1fr);
-  gap: 26px;
+  grid-template-columns: clamp(340px, 26vw, 420px) minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
 }
 
@@ -676,7 +705,7 @@ onMounted(() => {
 .desk-main-column {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
   min-width: 0;
 }
 
@@ -855,7 +884,7 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
-  padding-top: 16px;
+  padding-top: 14px;
 }
 
 .tag-pill {
@@ -899,7 +928,7 @@ onMounted(() => {
   font-weight: 700;
 }
 
-/* ================== 3. 笔耕足迹（热力图） ================== */
+/* ================== 3. 笔耕足迹（热力图 + 徽章卡片） ================== */
 .activity-submeta {
   color: var(--text-muted);
   font-size: 0.88rem;
@@ -907,57 +936,59 @@ onMounted(() => {
 }
 
 .activity-body {
-  display: grid;
-  grid-template-columns: minmax(230px, 286px) minmax(0, 1fr);
-  gap: 40px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding-top: 20px;
+  justify-content: space-between;
+  gap: 28px;
+  padding-top: 18px;
 }
 
 .activity-heatmap-panel {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .activity-heatmap-wrap {
-  overflow-x: visible;
-  padding: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .activity-heatmap {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 16px;
+  grid-auto-columns: 15px;
   gap: 5px;
   width: max-content;
 }
 
 .activity-week {
   display: grid;
-  grid-template-rows: repeat(7, 16px);
+  grid-template-rows: repeat(7, 15px);
   gap: 5px;
 }
 
 .activity-day,
 .activity-legend i {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border: 1px solid var(--border-soft);
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--control-background);
   box-shadow: none;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 .activity-day:hover {
-  transform: scale(1.22);
+  transform: scale(1.25);
   box-shadow: 0 4px 10px rgba(42, 33, 23, 0.12);
 }
 
 .activity-day.is-future {
-  opacity: 0.3;
+  opacity: 0.28;
 }
 
 .activity-day.is-level-1,
@@ -983,229 +1014,271 @@ onMounted(() => {
 .activity-legend {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.activity-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
-  border-left: 1px solid var(--divider);
-  padding-left: 36px;
-}
-
-.activity-summary-item {
-  display: grid;
-  justify-items: center;
   gap: 6px;
-  padding: 12px 14px;
-  text-align: center;
-}
-
-.activity-summary-item + .activity-summary-item {
-  border-left: 1px solid var(--divider);
-}
-
-.summary-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 4px;
-  border-radius: 999px;
-}
-
-.summary-icon svg {
-  width: 1.3rem;
-  height: 1.3rem;
-}
-
-.summary-icon.is-green {
-  background: rgba(91, 119, 78, 0.12);
-  color: var(--moss);
-}
-
-.summary-icon.is-gold {
-  background: rgba(218, 160, 64, 0.13);
-  color: var(--brand-gold);
-}
-
-.summary-icon.is-blue {
-  background: rgba(74, 136, 188, 0.12);
-  color: var(--brand-blue);
-}
-
-.summary-label {
   color: var(--text-muted);
-  font-size: 0.86rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
-.activity-summary-item strong {
-  color: var(--text-primary);
-  font-size: clamp(1.8rem, 2.5vw, 2.2rem);
-  font-weight: 850;
-  line-height: 1.1;
-}
-
-.activity-summary-item strong small {
-  font-size: 0.85rem;
-  font-weight: 650;
-  color: var(--text-muted);
-}
-
-.activity-summary-item strong.status-text {
-  font-size: clamp(1.2rem, 1.8vw, 1.45rem);
-  color: var(--brand-blue);
-  margin-top: 4px;
-}
-
-/* ================== 4. 最近手迹 ================== */
-.recent-note-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.recent-note-item {
+/* 3 个独立的温润小统计卡片 */
+.activity-summary-cards {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) auto;
-  gap: 20px;
-  align-items: center;
-  padding: 15px 8px;
-  border-bottom: 1px solid var(--divider);
-  cursor: pointer;
-  transition: background 0.18s var(--motion-calm), padding 0.18s var(--motion-snappy);
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 12px;
+  flex: 0 1 420px;
 }
 
-.recent-note-item:last-child {
-  border-bottom: none;
-}
-
-.recent-note-item:hover {
-  background: var(--control-hover-background);
-  border-radius: 10px;
-}
-
-.recent-note-item:hover .item-title {
-  color: var(--brand-blue);
-}
-
-.recent-note-item:hover .item-enter-btn {
-  opacity: 1;
-  transform: translate(2px, -2px);
-  color: var(--brand-blue);
-}
-
-/* 左侧图标与时间 */
-.item-visual-col {
+.stat-badge-card {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--panel-background-soft);
+  transition: transform 0.16s var(--motion-snappy), background 0.16s ease;
 }
 
-.item-type-icon {
+.stat-badge-card:hover {
+  transform: translateY(-1px);
+  background: var(--control-hover-background);
+}
+
+.badge-card-icon {
   display: inline-grid;
   place-items: center;
   width: 38px;
   height: 38px;
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
-.item-type-icon svg {
-  width: 1.1rem;
-  height: 1.1rem;
+.badge-card-icon svg {
+  width: 1.18rem;
+  height: 1.18rem;
 }
 
-.item-type-icon.is-paper {
-  background: var(--accent-soft);
-  color: var(--brand-blue);
-}
-
-.item-type-icon.is-moss {
-  background: var(--moss-soft);
+.badge-card-icon.is-green {
+  background: rgba(91, 119, 78, 0.12);
   color: var(--moss);
 }
 
-.item-type-icon.is-gold {
-  background: color-mix(in srgb, var(--brand-gold) 16%, var(--panel-background));
+.badge-card-icon.is-gold {
+  background: rgba(218, 160, 64, 0.13);
   color: var(--brand-gold);
 }
 
-.item-type-icon.is-blue {
+.badge-card-icon.is-blue {
   background: rgba(74, 136, 188, 0.12);
   color: var(--brand-blue);
 }
 
-.item-type-icon.is-stone {
+.badge-card-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.badge-card-label {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-card-value {
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.badge-card-value small {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.badge-card-value.is-mood {
+  font-size: 1.05rem;
+  color: var(--brand-blue);
+}
+
+/* ================== 4. 最近手迹 (2 列手账卡片网格) ================== */
+.recent-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.note-shelf-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--panel-background-soft);
+  cursor: pointer;
+  transition:
+    transform 0.18s var(--motion-snappy),
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.note-shelf-card:hover {
+  transform: translateY(-2px);
+  background: var(--control-hover-background);
+  border-color: var(--accent-border);
+  box-shadow: 0 8px 20px rgba(42, 33, 23, 0.08);
+}
+
+.note-shelf-card:hover .shelf-card-title {
+  color: var(--brand-blue);
+}
+
+.note-shelf-card:hover .shelf-card-action {
+  opacity: 1;
+  color: var(--brand-blue);
+  transform: translate(2px, -2px);
+}
+
+/* 卡片顶栏 */
+.shelf-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shelf-card-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.shelf-card-date svg {
+  width: 0.92rem;
+  height: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.shelf-card-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shelf-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(218, 160, 64, 0.16);
+  color: var(--brand-gold);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.shelf-pinned-badge svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.shelf-type-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.shelf-type-icon svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.shelf-type-icon.is-paper {
+  background: var(--accent-soft);
+  color: var(--brand-blue);
+}
+
+.shelf-type-icon.is-moss {
+  background: var(--moss-soft);
+  color: var(--moss);
+}
+
+.shelf-type-icon.is-gold {
+  background: color-mix(in srgb, var(--brand-gold) 16%, var(--panel-background));
+  color: var(--brand-gold);
+}
+
+.shelf-type-icon.is-blue {
+  background: rgba(74, 136, 188, 0.12);
+  color: var(--brand-blue);
+}
+
+.shelf-type-icon.is-stone {
   background: var(--control-background);
   color: var(--text-muted);
 }
 
-.item-date {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  line-height: 1.35;
-  white-space: pre-line;
-  font-variant-numeric: tabular-nums;
+.shelf-type-icon.is-violet {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-/* 主体信息列 */
-.item-content-col {
+/* 卡片主体 */
+.shelf-card-main {
   display: grid;
-  gap: 5px;
+  gap: 8px;
   min-width: 0;
 }
 
-.item-title-row {
+.shelf-title-tags {
   display: flex;
   align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
-.item-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.shelf-card-title {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.98rem;
   font-weight: 850;
-  line-height: 1.3;
+  line-height: 1.35;
   transition: color 0.18s ease;
 }
 
-.pinned-tag {
+.shelf-card-tags {
   display: inline-flex;
   align-items: center;
-  color: var(--brand-gold);
-  font-size: 0.95rem;
+  gap: 5px;
 }
 
-.item-tags {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.item-tag-pill {
-  padding: 1px 7px;
+.shelf-tag-pill {
+  padding: 1px 6px;
   border-radius: 999px;
   background: var(--surface-muted);
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 650;
 }
 
-.item-excerpt {
+.shelf-card-excerpt {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1214,34 +1287,42 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-/* 右侧元信息列 */
-.item-meta-col {
+/* 卡片底栏 */
+.shelf-card-footer {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px dashed var(--divider);
   color: var(--text-muted);
-  font-size: 0.86rem;
-  white-space: nowrap;
+  font-size: 0.8rem;
 }
 
-.item-word-count {
+.shelf-card-words {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-variant-numeric: tabular-nums;
-  font-size: 0.82rem;
 }
 
-.item-enter-btn {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  opacity: 0.45;
+.shelf-card-words svg {
+  width: 0.88rem;
+  height: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.shelf-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  opacity: 0.5;
   transition: opacity 0.18s ease, transform 0.18s var(--motion-snappy), color 0.18s ease;
 }
 
-.item-enter-btn svg {
-  width: 1.15rem;
-  height: 1.15rem;
+.shelf-card-action svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 /* ================== 通用空状态 ================== */
@@ -1278,28 +1359,19 @@ onMounted(() => {
 }
 
 /* ================== 响应式适配 ================== */
-@media (max-width: 1240px) {
-  .desk-grid {
-    grid-template-columns: 310px minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .activity-body {
+@media (max-width: 1200px) {
+  .recent-cards-grid {
     grid-template-columns: 1fr;
-    gap: 22px;
   }
 
-  .activity-summary {
-    border-left: none;
-    border-top: 1px solid var(--divider);
-    padding-left: 0;
-    padding-top: 20px;
+  .activity-summary-cards {
+    flex: 1 1 100%;
   }
 }
 
 @media (max-width: 980px) {
   .home-stage {
-    padding: 28px 20px 36px;
+    padding: 24px 18px 36px;
   }
 
   .home-topbar {
@@ -1314,21 +1386,6 @@ onMounted(() => {
 
   .desk-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .recent-note-item {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .item-meta-col {
-    justify-content: space-between;
-  }
-
-  .item-visual-col {
-    justify-content: space-between;
   }
 }
 </style>
