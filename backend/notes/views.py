@@ -22,6 +22,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.views import APIView
 
 from rag.services import enqueue_note_ids_on_commit
+from tasks.models import Task
 
 from .models import DiaryEntry, Note, NoteImage, NoteVersion, Tag
 from .serializers import (
@@ -409,6 +410,8 @@ class GlobalSearchView(APIView):
             .annotate(diary_date_text=Cast('diary_date', output_field=CharField()))
             .order_by('-note__updated_at', '-id')
         )
+        # 任务与笔记、日记并列展示，但搜索范围只有标题。
+        tasks = Task.objects.filter(title__icontains=search).order_by('-updated_at', '-id') if search else Task.objects.none()
 
         if search:
             notes = notes.filter(
@@ -427,7 +430,7 @@ class GlobalSearchView(APIView):
                 | Q(diary_date_text__icontains=search)
             ).distinct()
 
-        total_count = notes.count() + diaries.count()
+        total_count = notes.count() + diaries.count() + tasks.count()
         start = (page - 1) * page_size
         end = start + page_size
         combined = [
@@ -436,6 +439,9 @@ class GlobalSearchView(APIView):
         ] + [
             (entry.note.updated_at, entry.note_id, self._build_diary_result(entry))
             for entry in diaries[:end]
+        ] + [
+            (task.updated_at, task.id, self._build_task_result(task))
+            for task in tasks[:end]
         ]
         combined.sort(key=lambda item: (item[0], item[1]), reverse=True)
 
@@ -477,6 +483,21 @@ class GlobalSearchView(APIView):
             'excerpt': plain_text[:120] + ('...' if len(plain_text) > 120 else ''),
             'tags': [],
             'updated_at': entry.note.updated_at,
+        }
+
+    @staticmethod
+    def _build_task_result(task):
+        return {
+            'type': 'task',
+            'id': task.id,
+            'title': task.title,
+            'start_at': task.start_at,
+            'end_at': task.end_at,
+            'urgency': task.urgency,
+            'urgency_display': task.get_urgency_display(),
+            'is_completed': task.is_completed,
+            'segment': task.segment,
+            'updated_at': task.updated_at,
         }
 
 

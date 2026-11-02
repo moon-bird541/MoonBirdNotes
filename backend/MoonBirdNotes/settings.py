@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'accounts.apps.AccountsConfig',
     'notes.apps.NotesConfig',
+    # 任务与笔记、日记并列，数据上只单向引用 Note，不参与 RAG 索引。
+    'tasks.apps.TasksConfig',
     # RAG 数据处理与 Agent 推理分开注册，避免 Agent 直接耦合索引内部实现。
     'rag.apps.RagConfig',
     'agent.apps.AgentConfig',
