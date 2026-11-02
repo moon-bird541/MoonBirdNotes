@@ -828,9 +828,7 @@ const getTableElementNearPoint = (x, y, tolerance = 8) =>
 
 const isTableResizeIgnoredElement = (element) =>
   Boolean(
-    element?.closest?.(
-      '.table-action-panel, .table-hover-control, .floating-toolbar, .editor-side-toolbar, .side-table-picker-popover'
-    )
+    element?.closest?.('.table-action-panel, .table-hover-control, .fixed-editor-toolbar')
   )
 
 const getTableResizeHitInfo = (event, allowPressedPointer = false) => {

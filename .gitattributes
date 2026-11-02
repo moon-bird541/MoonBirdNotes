@@ -10,3 +10,11 @@
 
 # Markdown uses two trailing spaces for intentional hard line breaks.
 *.md whitespace=-blank-at-eol,-blank-at-eof
+
+# 容器启动脚本必须是 LF：CRLF 会让 `sh` 在第一行就报
+# `set: Illegal option -`，容器反复重启后变成 unhealthy。
+# 这台开发机是 Windows 且 core.autocrlf=true，所以必须显式钉住。
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
