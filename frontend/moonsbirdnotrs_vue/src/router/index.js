@@ -15,6 +15,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/tasks',
+    name: 'tasks',
+    component: () => import('../views/TasksView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/knowledge-chat',
     name: 'knowledge-chat',
     component: () => import('../views/KnowledgeChatView.vue'),

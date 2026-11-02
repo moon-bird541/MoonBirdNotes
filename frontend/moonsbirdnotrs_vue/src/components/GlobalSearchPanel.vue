@@ -105,9 +105,25 @@ const closeSearch = () => {
 }
 
 const isDiaryResult = (result) => result?.type === 'diary'
+const isTaskResult = (result) => result?.type === 'task'
+
+const resultIcon = (result) => {
+  if (isTaskResult(result)) {
+    return 'ph:check-square-offset'
+  }
+
+  return isDiaryResult(result) ? 'ph:calendar-blank' : 'ph:notebook'
+}
 
 const openResult = (result, edit = false) => {
   closeSearch()
+
+  if (isTaskResult(result)) {
+    // 任务只有独立页面，没有详情/编辑之分。
+    router.push({ name: 'tasks', query: { task: result.id } })
+    return
+  }
+
   if (isDiaryResult(result)) {
     router.push({ name: edit ? 'diary-edit' : 'diary', params: { date: result.diary_date } })
     return
@@ -123,6 +139,12 @@ const openFirstResult = () => {
 }
 
 const resultTypeLabel = (result) => {
+  if (isTaskResult(result)) {
+    const status = result.is_completed ? '已完成' : '未完成'
+    const urgency = result.urgency_display ? ` · ${result.urgency_display}` : ''
+    return `任务 · ${status}${urgency}`
+  }
+
   if (isDiaryResult(result)) {
     return result.diary_date ? `日记 · ${result.diary_date}` : '日记'
   }
@@ -204,7 +226,7 @@ onBeforeUnmount(() => {
           v-model="keyword"
           class="command-input"
           clearable
-          placeholder="搜索笔记、日记正文、标签或文件名"
+          placeholder="搜索笔记、日记正文、标签、文件名或任务标题"
           @keyup.enter="openFirstResult"
         >
           <template #prefix>
@@ -222,7 +244,7 @@ onBeforeUnmount(() => {
             <article v-for="result in results" :key="`${result.type}-${result.id}`" class="result-row">
               <button class="result-main" type="button" @click="openResult(result)">
                 <span class="result-icon">
-                  <Icon :icon="isDiaryResult(result) ? 'ph:calendar-blank' : 'ph:notebook'" />
+                  <Icon :icon="resultIcon(result)" />
                 </span>
                 <span class="result-copy">
                   <strong>
@@ -232,7 +254,7 @@ onBeforeUnmount(() => {
                     </template>
                   </strong>
                   <span class="result-kind">{{ resultTypeLabel(result) }}</span>
-                  <span v-if="!isDiaryResult(result) && result.tags?.length" class="result-tags">
+                  <span v-if="!isDiaryResult(result) && !isTaskResult(result) && result.tags?.length" class="result-tags">
                     <span v-for="tag in result.tags" :key="tag.id || tag.name">
                       <template v-for="(part, index) in buildHighlightParts(tag.name, normalizedKeyword)" :key="`tag-${tag.id || tag.name}-${index}`">
                         <mark v-if="part.highlight" class="search-highlight">{{ part.text }}</mark>
@@ -240,7 +262,7 @@ onBeforeUnmount(() => {
                       </template>
                     </span>
                   </span>
-                  <span class="result-excerpt">
+                  <span v-if="result.excerpt" class="result-excerpt">
                     <template v-for="(part, index) in buildHighlightParts(result.excerpt, normalizedKeyword)" :key="`excerpt-${index}`">
                       <mark v-if="part.highlight" class="search-highlight">{{ part.text }}</mark>
                       <template v-else>{{ part.text }}</template>
@@ -254,7 +276,7 @@ onBeforeUnmount(() => {
                 <button type="button" aria-label="查看" @click="openResult(result)">
                   <Icon icon="ph:eye" />
                 </button>
-                <button type="button" aria-label="编辑" @click="openResult(result, true)">
+                <button v-if="!isTaskResult(result)" type="button" aria-label="编辑" @click="openResult(result, true)">
                   <Icon icon="ph:pencil-line" />
                 </button>
               </div>

@@ -12,6 +12,7 @@ const router = useRouter()
 
 const navigationItems = [
   { label: '首页', routeName: 'home', icon: 'ph:house-line' },
+  { label: '任务', routeName: 'tasks', icon: 'ph:check-square-offset' },
   { label: '知识对话', routeName: 'knowledge-chat', icon: 'ph:chats-circle' },
   { label: 'RAG 链路', routeName: 'rag-traces', icon: 'ph:activity' },
   { label: 'Token 用量', routeName: 'token-usage', icon: 'ph:gauge' },

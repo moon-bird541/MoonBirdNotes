@@ -6,6 +6,7 @@ import { Icon } from '@iconify/vue'
 
 import WorkspaceShell from '../components/WorkspaceShell.vue'
 import api from '../services/api'
+import { formatTaskRange, resolveUrgencyTone } from '../utils/tasks'
 
 const router = useRouter()
 const creating = ref(false)
@@ -19,6 +20,16 @@ const summary = ref({
   tag_distribution: [],
   recent_notes: [],
   upload_activity: [],
+})
+
+// 首页任务面板：只取待办段（<= 24 小时）的未完成任务。
+const taskLoading = ref(false)
+const todoTasks = ref([])
+const taskStats = ref({
+  todo_count: 0,
+  project_count: 0,
+  overdue_count: 0,
+  completed_today: 0,
 })
 
 const HEATMAP_WEEK_COUNT = 11
@@ -73,6 +84,35 @@ const fetchSummary = async () => {
 
 const goToNotes = () => {
   router.push('/notes')
+}
+
+const goToTasks = () => {
+  router.push({ name: 'tasks' })
+}
+
+const fetchTasks = async () => {
+  taskLoading.value = true
+
+  try {
+    const { data } = await api.get('/tasks/summary/')
+    todoTasks.value = data.todo_tasks || []
+    taskStats.value = data.stats || taskStats.value
+  } catch {
+    // 首页面板是增强信息，接口失败时保持空态，不打断首页其他区块。
+    todoTasks.value = []
+  } finally {
+    taskLoading.value = false
+  }
+}
+
+const completeTaskFromHome = async (task) => {
+  try {
+    await api.post(`/tasks/${task.id}/complete/`, {})
+    ElMessage.success('任务已完成。')
+    fetchTasks()
+  } catch (error) {
+    ElMessage.error(error.response?.data?.detail || '操作失败，请稍后重试。')
+  }
 }
 
 const goToTags = () => {
@@ -193,6 +233,7 @@ const resolveTagWidth = (tag) => {
 
 onMounted(() => {
   fetchSummary()
+  fetchTasks()
 })
 </script>
 
@@ -223,34 +264,67 @@ onMounted(() => {
           </div>
         </header>
 
-        <section class="overview-board fade-rise-enter-delay" aria-label="笔记统计">
+        <section v-loading="taskLoading" class="overview-board fade-rise-enter-delay" aria-label="今日待办">
           <div class="panel-title">
-            <span class="panel-title-icon"><Icon icon="ph:book-bookmark" /></span>
-            <h2>桌面数字</h2>
+            <span class="panel-title-icon"><Icon icon="ph:check-square-offset" /></span>
+            <h2>今日待办</h2>
           </div>
 
-          <div class="metric-rail">
-            <article class="metric-item">
-              <span class="metric-icon"><Icon icon="ph:notebook" /></span>
-              <span>
-                <small>笔记总数</small>
-                <strong>{{ formatNumber(stats.note_count) }}</strong>
-              </span>
+          <div class="todo-head">
+            <span>{{ taskStats.todo_count }} 条待办 · {{ taskStats.project_count }} 个项目</span>
+            <button class="text-action" type="button" @click="goToTasks">
+              全部任务
+              <Icon icon="ph:arrow-right" />
+            </button>
+          </div>
+
+          <div v-if="todoTasks.length" class="todo-list">
+            <article
+              v-for="task in todoTasks"
+              :key="task.id"
+              class="todo-item"
+              :class="[`is-${resolveUrgencyTone(task.urgency)}`, { 'is-overdue': task.is_overdue }]"
+            >
+              <button
+                type="button"
+                class="todo-check"
+                aria-label="标记完成"
+                @click="completeTaskFromHome(task)"
+              >
+                <Icon icon="ph:circle" />
+              </button>
+
+              <div class="todo-copy">
+                <strong>{{ task.title }}</strong>
+                <small>{{ formatTaskRange(task) }}</small>
+              </div>
+
+              <span v-if="task.is_overdue" class="todo-overdue">逾期</span>
             </article>
-            <article class="metric-item">
-              <span class="metric-icon"><Icon icon="ph:text-aa" /></span>
-              <span>
-                <small>累计字数</small>
-                <strong>{{ formatNumber(stats.word_count) }}</strong>
-              </span>
-            </article>
-            <article class="metric-item">
-              <span class="metric-icon"><Icon icon="ph:tag" /></span>
-              <span>
-                <small>活跃标签</small>
-                <strong>{{ formatNumber(stats.tag_count) }}</strong>
-              </span>
-            </article>
+          </div>
+
+          <div v-else class="empty-state compact">
+            <strong>今天没有待办</strong>
+            <p>24 小时内没有要收尾的事。</p>
+          </div>
+
+          <div class="metric-inline">
+            <span>
+              <small>笔记</small>
+              <strong>{{ formatNumber(stats.note_count) }}</strong>
+            </span>
+            <span>
+              <small>字数</small>
+              <strong>{{ formatNumber(stats.word_count) }}</strong>
+            </span>
+            <span>
+              <small>标签</small>
+              <strong>{{ formatNumber(stats.tag_count) }}</strong>
+            </span>
+            <span>
+              <small>逾期</small>
+              <strong>{{ formatNumber(taskStats.overdue_count) }}</strong>
+            </span>
           </div>
         </section>
 
@@ -510,14 +584,6 @@ onMounted(() => {
   pointer-events: none;
 }
 
-.overview-copy h2 {
-  margin: 0;
-  color: var(--brand-navy);
-  font-size: 1.08rem;
-  line-height: 1.2;
-  letter-spacing: 0;
-}
-
 .activity-board {
   grid-area: activity;
   min-width: 0;
@@ -688,51 +754,6 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.metric-rail {
-  display: grid;
-  grid-template-columns: 1fr;
-  min-width: 0;
-  border-top: 1px solid var(--border-soft);
-}
-
-.metric-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 14px;
-  min-width: 0;
-  min-height: 70px;
-  padding: 13px 0;
-}
-
-.metric-item + .metric-item {
-  border-top: 1px solid var(--border-soft);
-}
-
-.metric-icon {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  background: var(--accent-soft);
-  color: var(--brand-blue);
-}
-
-.metric-icon svg {
-  width: 1.08rem;
-  height: 1.08rem;
-}
-
-.metric-item span:last-child {
-  min-width: 0;
-}
-
-.metric-item small,
 .recent-date,
 .recent-meta,
 .recent-copy small,
@@ -740,19 +761,132 @@ onMounted(() => {
   color: var(--ink-soft);
 }
 
-.metric-item small {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.86rem;
+.todo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
-.metric-item strong {
-  display: block;
+.todo-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.todo-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--panel-background-soft);
+}
+
+.todo-item.is-low {
+  border-left-color: var(--moss);
+}
+
+.todo-item.is-medium {
+  border-left-color: var(--brand-gold);
+}
+
+.todo-item.is-high {
+  border-left-color: var(--brand-blue);
+}
+
+.todo-item.is-urgent {
+  border-left-color: var(--danger);
+}
+
+.todo-item.is-overdue {
+  background: var(--danger-soft);
+}
+
+.todo-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: color 0.18s var(--motion-calm), transform 0.18s var(--motion-snappy);
+}
+
+.todo-check:hover {
+  color: var(--moss);
+  transform: scale(1.1);
+}
+
+.todo-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.todo-copy strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-copy small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.todo-overdue {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* 原「桌面数字」三个统计缩成一行，附在任务面板底部。 */
+.metric-inline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.metric-inline span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.metric-inline small {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metric-inline strong {
   overflow: hidden;
   color: var(--brand-navy);
-  font-size: 1.48rem;
+  font-size: 1.02rem;
   line-height: 1;
-  letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -959,19 +1093,8 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .metric-rail {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .metric-item {
-    display: flex;
-    justify-content: flex-start;
-    padding: 14px 18px;
-  }
-
-  .metric-item + .metric-item {
-    border-top: none;
-    border-left: 1px solid var(--border-soft);
+  .metric-inline {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .activity-body {
@@ -1002,17 +1125,8 @@ onMounted(() => {
     justify-content: flex-start;
   }
 
-  .metric-rail {
-    grid-template-columns: 1fr;
-  }
-
-  .metric-item {
-    padding: 14px 0;
-  }
-
-  .metric-item + .metric-item {
-    border-top: 1px solid var(--border-soft);
-    border-left: none;
+  .metric-inline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1047,11 +1161,6 @@ onMounted(() => {
   .activity-summary-item + .activity-summary-item {
     border-top: 1px solid var(--border-soft);
     border-left: none;
-  }
-
-  .metric-item {
-    min-height: 86px;
-    padding: 16px;
   }
 
   .recent-item {
@@ -1198,45 +1307,34 @@ onMounted(() => {
   height: 1.08rem;
 }
 
-.metric-rail,
 .panel-head,
 .activity-head {
   border-color: var(--divider);
 }
 
-.metric-rail {
-  margin-top: 14px;
-}
-
-.metric-item {
-  min-height: 82px;
-  gap: 22px;
-  padding: 16px 0;
-}
-
-.metric-icon {
-  width: 48px;
-  height: 48px;
-  border-color: var(--accent-border);
-  border-radius: 10px;
-  background: var(--accent-soft);
-  color: var(--brand-blue);
-}
-
-.metric-icon svg {
-  width: 1.24rem;
-  height: 1.24rem;
-}
-
-.metric-item small {
-  margin-bottom: 8px;
+.todo-head {
   color: var(--text-muted);
-  font-size: 0.88rem;
 }
 
-.metric-item strong {
+.todo-item {
+  border-color: var(--border-soft);
+  background: var(--panel-background-soft);
+}
+
+.todo-item small {
+  color: var(--text-muted);
+}
+
+.metric-inline {
+  border-color: var(--divider);
+}
+
+.metric-inline small {
+  color: var(--text-muted);
+}
+
+.metric-inline strong {
   color: var(--text-primary);
-  font-size: 1.58rem;
   font-weight: 850;
 }
 
