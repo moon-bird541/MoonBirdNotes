@@ -269,6 +269,13 @@
 	font-weight: 600;
 }
 
+/* toast-ui 把表头单元格内的 <p> 硬编码成白色（.toastui-editor-contents th p），
+   编辑态单元格内容是段落；表头底色已被上面改成浅色，白字会直接看不见，
+   这里把表头段落取回正文色。 */
+:is(.blog-prose, .blog-prose .toastui-editor-contents) th p {
+	color: var(--brand-navy);
+}
+
 :is(.blog-prose, .blog-prose .toastui-editor-contents) :is(th, td):last-child {
 	border-right: none;
 }

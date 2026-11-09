@@ -1788,6 +1788,11 @@ onBeforeUnmount(() => {
   text-align: left;
 }
 
+/* toast-ui 把表头单元格内的 <p> 硬编码成白色，表头是浅色底，需要取回正文色 */
+.diary-editor-root :deep(.toastui-editor-contents th p) {
+  color: var(--brand-navy);
+}
+
 .diary-editor-root :deep(.toastui-editor-contents th:last-child),
 .diary-editor-root :deep(.toastui-editor-contents td:last-child) {
   border-right: none;
