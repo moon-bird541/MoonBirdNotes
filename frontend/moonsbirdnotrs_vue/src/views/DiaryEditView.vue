@@ -39,6 +39,7 @@ import {
 } from '../utils/tableLayout'
 import { getFenceLanguage, replaceFenceLanguage } from '../utils/fenceInfo'
 import { createRichBlockPreview } from '../utils/editorDecorations'
+import { createCodePasteFix } from '../utils/pastedCode'
 import { applyWysiwygCallout, getActiveCalloutType, insertWysiwygText } from '../utils/wysiwygBlocks'
 import '../styles/markdown.css'
 
@@ -791,6 +792,8 @@ const buildEditor = () => {
       createRichBlockPreview({
         onEditLanguage: (pos) => promptDiaryCodeBlockLanguage(pos),
       }),
+      // 粘贴被逐行拆开的代码时合并成一个代码块
+      createCodePasteFix(),
     ],
     hooks: {
       addImageBlobHook: uploadEditorImage,

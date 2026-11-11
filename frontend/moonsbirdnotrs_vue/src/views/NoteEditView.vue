@@ -70,6 +70,7 @@ import {
   normalizeResizeRows,
 } from '../utils/tableResize'
 import { createRichBlockPreview } from '../utils/editorDecorations'
+import { createCodePasteFix } from '../utils/pastedCode'
 import { renderMarkdownPreview } from '../utils/markdownPreview'
 import { sanitizePreviewHtml } from '../utils/previewSanitizer'
 import { applyWysiwygCallout, getActiveCalloutType } from '../utils/wysiwygBlocks'
@@ -3828,6 +3829,8 @@ const buildEditor = () => {
         // 光标停在提示框标记行且正在输入时，保留原文以便修改类型与标题
         isEditorFocused: () => Boolean(getWysiwygView()?.hasFocus?.()),
       }),
+      // 粘贴被逐行拆开的代码时合并成一个代码块
+      createCodePasteFix(),
     ],
     hooks: {
       addImageBlobHook: uploadEditorImage,
